@@ -1,0 +1,48 @@
+# Vivado generated projects, caches, reports, and runtime noise
+build/
+vivado_project*/
+.Xil/
+*.xpr
+*.cache/
+*.gen/
+*.hw/
+*.ip_user_files/
+*.runs/
+*.sim/
+*.srcs/
+xsim.dir/
+*.jou
+*.log
+*.pb
+*.str
+*.wdb
+*.dcp
+*.rpx
+webtalk*
+clockInfo.txt
+usage_statistics_webtalk.html
+
+# Generated bitstreams and run artifacts (publish accepted images via releases)
+artifacts/
+*.bit
+*.bin
+*.mcs
+*.ltx
+
+# Python environments and caches
+.venv/
+venv/
+__pycache__/
+*.pyc
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Editors, agent state, and OS noise
+.vscode/
+.idea/
+.agents/
+.codex/
+.DS_Store
+Thumbs.db
+Desktop.ini
