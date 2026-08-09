@@ -1,38 +1,90 @@
-# Arty A7 optical DSP platform
+# Arty A7 optical DSP prototype
 
-An FPGA-centric, real-time optical communications test platform for the
-Digilent Arty A7-100T. The intended V1 system generates a deterministic OOK
-test stream, sends it through a short optical link, samples the received analog
-waveform through an external ADC, performs fixed-point receive DSP in fabric,
-measures BER in hardware, and exports versioned telemetry over UDP.
+A student-scale FPGA optical-communications prototype for the Digilent Arty
+A7-100T. The project will transmit a deterministic NRZ on-off-keyed (OOK) bit
+stream through a short 650 nm laser link, sample a BPW34-style photodiode with
+the Arty's built-in XADC, perform fixed-point receive DSP in FPGA fabric, and
+measure the resulting bit-error rate (BER).
 
-The repository is currently in **planning and infrastructure setup**. No DSP or
-link RTL has been implemented yet.
+The goal is a reproducible proof of concept, not a high-speed or calibrated
+optical instrument. The repository is currently in **planning and hardware
+bring-up preparation**; no optical-link or DSP RTL has been implemented.
 
 ## Start here
 
-- [Implementation-ready project plan](docs/project-plan.md) — scope,
-  architecture, hardware gates, milestones, verification, benchmarks, risks,
-  and repository organization.
-- [Terminal programming flow](scripts/README.md) — build/program commands that
-  do not require opening the Vivado IDE.
+- [Implementation-ready project plan](docs/project-plan.md) — scope, hardware,
+  wiring gates, milestones, verification, benchmarks, risks, and repository
+  organization.
+- [Terminal Vivado workflow](scripts/README.md) — batch build/program commands
+  that do not require opening the Vivado IDE.
+
+## Selected prototype hardware
+
+| Role | Selected hardware | Purpose and limitation |
+|---|---|---|
+| FPGA and ADC | Digilent Arty A7-100T and its 12-bit, 1 MSa/s-capable XADC | A0-A5 accept an external 0-3.3 V signal through the board's scaling network; V1 does not require a separate ADC purchase. |
+| Optical transmitter | DAOKI kit's KY-008-style 650 nm, nominal 5 mW laser module | Low-cost OOK source. Its actual pinout, current, switching bandwidth, and optical classification must be measured or verified after arrival. |
+| First receiver | DAOKI non-modulated digital laser receiver module | Alignment, beam interruption, and very-low-rate digital bring-up only. Its comparator output is not an analog waveform and cannot demonstrate receive DSP. |
+| DSP receiver | Amazon five-pack of through-hole BPW34/BPW34S-style silicon PIN photodiodes | Analog light detector for the XADC path. The seller is not Vishay, so the devices are treated as unverified BPW34-compatible parts and characterized before benchmarking. |
+| Initial analog front end | BPW34-style detector, 3.3 V reverse bias, and 10 kΩ load resistor | Cheapest first experiment. Resistor values may be swept after measuring signal swing and bandwidth; a transimpedance amplifier is an optional later upgrade. |
+| TX switch | Existing small transistor, preferably a 2N7000 or 2N2222A with the appropriate gate/base resistors | Keeps laser current out of the FPGA pin. The Arty GPIO controls the switch; it must not directly power the laser module. |
+
+Selected purchase listings:
+
+- [DAOKI four-transmitter/four-receiver kit](https://www.amazon.ca/dp/B091GBJLX5)
+- [Five BPW34/BPW34S-style photodiodes](https://www.amazon.ca/dp/B0F4CNXCMX)
+
+The DAOKI receiver and BPW34 are complementary, not substitutes. The DAOKI
+receiver gets the optical path working quickly; the BPW34 path produces the
+sampled amplitude data needed for filtering, timing selection, thresholding,
+and meaningful DSP comparisons.
 
 ## Baseline V1 qualification profile
 
 | Item | Baseline |
 |---|---|
-| FPGA | Arty A7-100T, `xc7a100tcsg324-1` |
-| Modulation | NRZ OOK / intensity modulation |
-| Acquisition | 12-bit external ADC, 800 kSa/s qualification point |
-| Symbol rate | 100 kbit/s at 8 samples/symbol |
-| Receiver DSP | DC removal, fixed-point FIR, sample-phase recovery, threshold decision |
-| Measurement | FPGA-resident PRBS synchronization, BER, lock, overflow, and rate counters |
-| Host link | 10/100 Ethernet, IPv4/UDP telemetry and bounded diagnostic capture |
-| FPGA soft CPU | None in V1 |
+| Modulation | NRZ OOK / direct intensity modulation |
+| Acquisition | Arty XADC channel A0 at 250 kSa/s, 12-bit samples |
+| Bring-up rate | 1 kbit/s, fixed threshold, generous oversampling |
+| Qualification rate | 10 kbit/s at 25 samples/symbol |
+| Stretch rate | 25 kbit/s at 10 samples/symbol, only if measured hardware bandwidth supports it |
+| Receiver DSP | DC removal, fixed-point FIR, discrete sample-phase selection, threshold decision |
+| Measurement | FPGA-resident PRBS synchronization, BER, lock, saturation, and rate counters |
+| Host link | USB-UART for early evidence; Ethernet/UDP remains a later integration milestone |
 
-These values deliberately fit a low-cost 1 MSa/s Pmod-class ADC. Higher-rate
-hardware is a later, separately qualified profile rather than an unstated V1
-dependency.
+Rates are test profiles, not claims about the inexpensive modules. A profile is
+accepted only after the measured optical waveform, XADC headroom, sample
+integrity, and BER run meet the project-plan criteria.
+
+## Planned bring-up order
+
+1. Inspect the delivered modules, photograph markings, and determine the exact
+   pinout before applying power.
+2. Run one DAOKI transmitter continuously and use a DAOKI digital receiver to
+   establish safe alignment and beam-block detection.
+3. Add a transistor switch and prove slow FPGA-controlled OOK without sourcing
+   laser current from an FPGA pin.
+4. Characterize all supplied BPW34-style devices with a 10 kΩ load, then verify
+   the sense node stays within 0-3.3 V before connecting it to Arty A0.
+5. Capture dark, laser-off, laser-on, transition, and deliberately misaligned
+   XADC samples before implementing the receive DSP.
+6. Qualify 1 kbit/s first, then 10 kbit/s. Attempt 25 kbit/s only as a measured
+   stretch goal.
+
+## Safety and electrical rules
+
+- Never look into the laser aperture or beam, point it at a person, or operate
+  it at eye level. Use a matte beam stop and enclose the short optical path.
+- Treat the inexpensive module as an unverified visible-laser product even if
+  the listing claims 5 mW. Do not rely on the listing for a safety class.
+- The FPGA GPIO controls a transistor; it does not supply laser current.
+- A 5 V digital-receiver output must not connect directly to a 3.3 V FPGA pin.
+  Verify its high level and use a divider or level shifter when required.
+- Only A0-A5 are assumed to accept 0-3.3 V analog signals through the Arty
+  board's input network. Direct XADC differential pins remain limited to the
+  FPGA's XADC range and are outside the first prototype.
+- Share grounds deliberately and check every node with a meter or oscilloscope
+  before connecting the Arty.
 
 ## Terminal workflow
 
@@ -48,7 +100,7 @@ From a PowerShell terminal in VS Code:
 # Once scripts/build_bitstream.tcl exists, build and program in one command.
 .\scripts\fpga.cmd build-program
 
-# Validate paths and show the exact Vivado commands without executing them.
+# Validate paths and show the Vivado commands without executing them.
 .\scripts\fpga.cmd program -Bitstream .\path\to\image.bit -DryRun
 ```
 
@@ -58,9 +110,12 @@ selection and part verification to a batch Tcl script. See
 
 ## Current status
 
-- [x] Scope and acceptance plan established.
-- [x] Repository structure and evidence policy defined.
+- [x] Scope and evidence policy established.
+- [x] Student-scale hardware baseline selected: DAOKI kit, BPW34-style detector,
+  and the Arty A7 XADC.
 - [x] Terminal-only FPGA programming wrapper prepared.
+- [ ] Delivered hardware inspected and electrically characterized.
+- [ ] Final wiring and measured rate profiles frozen.
 
-No benchmark result should be reported as achieved until the evidence and exit
+No benchmark result is reported as achieved until its evidence and exit
 criteria in the project plan have been satisfied on physical hardware.
