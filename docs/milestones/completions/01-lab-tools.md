@@ -6,7 +6,7 @@
 |---|---|
 | Milestone | `1 — Lab Tools` |
 | Date completed | 2026-08-10 |
-| Git commit | Full commit hash |
+| Git commit | 9bddf49559453da36681759236e6b6cb12548795 |
 | Working tree | Clean |
 | Vivado/simulator | Vivado 2026.1 |
 | Hardware IDs | Arty A7-100T |
