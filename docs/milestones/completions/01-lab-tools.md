@@ -31,6 +31,4 @@ Not Applicable
 
 ## Reviewer decision
 
-- Status: `PASS`, `PASS WITH FOLLOW-UP`, or `BLOCKED`
-- Blocking evidence or required regression:
-- Safe next milestone:
+Status: PASS
