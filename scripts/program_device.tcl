@@ -4,6 +4,10 @@
 #   vivado -mode batch -source program_device.tcl \
 #     -tclargs <bitstream.bit> <expected-part-glob>
 
+
+# Vivado Executable: C:\AMDDesignTools\2026.1\Vivado\bin\vivado.bat
+# Program Path: .\scripts\fpga.cmd program -Bitstream "C:\path\to\actual.bit" -DryRun
+
 if {$argc < 1 || $argc > 2} {
     error "Usage: program_device.tcl <bitstream.bit> ?expected-part-glob?"
 }
