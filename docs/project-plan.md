@@ -1,11 +1,11 @@
 # FPGA optical DSP platform — project plan
 
-> **Document status:** Implementation-ready student prototype, revision 0.2
+> **Document status:** Implementation-ready learning plan, revision 0.3
 > **Project status:** Pre-implementation; parts selected, arrival inspection and
 > electrical gates remain open
-> **Primary target:** Digilent Arty A7-100T (`xc7a100tcsg324-1`)  
-> **V1 emphasis:** Measurable receive DSP, reproducible hardware evidence, and a
-> terminal-first workflow
+> **Primary target:** Digilent Arty A7-100T (`xc7a100tcsg324-1`)
+> **V1 emphasis:** Hand-written, explainable components; measurable receive DSP;
+> reproducible evidence; and a terminal-first workflow
 
 ## 1. Executive decision
 
@@ -26,9 +26,9 @@ The first qualification profile is intentionally modest and testable:
 | Line rate | 10 kbit/s | Provides 25 samples/symbol and suits a hobby-scale passive front end |
 | Modulation | NRZ OOK | Matches direct optical intensity modulation |
 | ADC resolution | 12 bits | Uses hardware already present on the Arty A7 |
-| FIR baseline | 16 programmable signed taps | Covers matched-filter/equalizer experiments and fits a serial MAC schedule |
+| FIR baseline | Readable parameterized direct-form, qualified at 8 and 16 taps | Prioritizes understanding and traceability over resource minimization |
 | Telemetry rate | 10 packets/s nominal | Responsive monitoring without coupling DSP to host load |
-| Ethernet | Direct 100BASE-TX-capable host link | Uses the Arty A7 on-board 10/100 PHY |
+| Host control | 115200-baud USB-UART packet link | Simple enough to hand-code and sufficient for bounded captures plus status |
 | Soft processor | None | Keeps acquisition, recovery, measurement, and transport inspectable in RTL |
 
 The 10 kbit/s result is a qualification target, not a claim about the Amazon
@@ -52,10 +52,11 @@ host assistance:
 6. acquire and retain PRBS lock with explicit hysteresis;
 7. count compared bits, bit errors, frames, lock losses, dropped samples, and
    transport errors in hardware;
-8. expose coherent statistics over USB-UART during bring-up and versioned UDP
-   in the integrated build;
-9. show a statistically defensible BER improvement from the enabled DSP chain
-   under at least one repeatable degraded-channel condition; and
+8. expose coherent statistics and bounded captures over USB-UART to a local
+   headless logger and dashboard;
+9. run a controlled, paired DSP-off/on comparison and report whether the DSP
+   changes BER and signal quality, including a neutral result if confidence is
+   insufficient; and
 10. publish routed timing, resource, latency, throughput, integrity, and
     physical-test evidence tied to a source commit and bitstream hash.
 
@@ -66,8 +67,8 @@ result, not completion.
 
 ### 3.1 In scope for V1
 
-- Arty A7-100T and its 100 MHz system clock, USB-JTAG/UART, user I/O, Pmod or
-  shield expansion, and on-board 10/100 Ethernet PHY.
+- Arty A7-100T and its 100 MHz system clock, USB-JTAG/UART, user I/O, and Pmod
+  or shield expansion.
 - One optical transmit path and one direct-detection receive path.
 - NRZ OOK with deterministic framing and PRBS payloads.
 - The Arty A7 XADC, initially using one 0-3.3 V-capable single-ended A0-A5
@@ -80,8 +81,8 @@ result, not completion.
 - Custom RTL data/control plane with no MicroBlaze dependency.
 - Self-checking simulation, bit-true software models, hardware qualification,
   and machine-readable benchmark evidence.
-- Ethernet/IPv4/UDP telemetry and an eventual local host control/dashboard
-  application.
+- A bounded UART control/telemetry protocol, reusable Python host library,
+  headless evidence logger, replay mode, and local dashboard application.
 
 ### 3.2 Explicitly deferred
 
@@ -92,6 +93,8 @@ result, not completion.
   power measurements, or unattended/unenclosed laser operation.
 - A purchased external ADC unless the onboard XADC is proven to be the limiting
   factor after the 25 kbit/s stretch profile is attempted.
+- Ethernet/IPv4/UDP transport. It is a post-V1 upgrade after the local UART
+  dashboard and qualification are complete.
 - General-purpose TCP, DHCP, web serving, or a full commercial network stack.
 - DDR buffering in the critical receive path.
 - Fractional-delay interpolation, Gardner/Mueller-and-Muller recovery, or
@@ -102,8 +105,8 @@ result, not completion.
 
 ```mermaid
 flowchart LR
-    SYS["100 MHz board clock"] --> TXNCO["TX symbol NCO / clock enable"]
-    TXNCO --> FRAME["Framer + PRBS generator"]
+    SYS["100 MHz board clock"] --> TXCE["Integer symbol clock enable"]
+    TXCE --> FRAME["Framer + PRBS generator"]
     FRAME --> TXIO["GPIO + transistor laser switch"]
     TXIO --> TXLASER["DAOKI 650 nm transmitter"]
     TXLASER --> OPT["Enclosed short optical channel"]
@@ -119,9 +122,9 @@ flowchart LR
     DEC --> SYNC["Frame / PRBS synchronizer"]
     SYNC --> BERT["64-bit BER + link counters"]
     BERT --> SNAP["Coherent status snapshot"]
-    SNAP --> UDP["Versioned UDP telemetry"]
-    UDP --> HOST["Host control, plots, evidence export"]
-    HOST --> CTRL["Validated idempotent controls"]
+    SNAP --> UART["Bounded UART packets"]
+    UART <--> HOST["Host library, logger, dashboard"]
+    UART --> CTRL["Validated idempotent controls"]
     CTRL --> FRAME
     CTRL --> FIR
     CTRL --> TIM
@@ -133,8 +136,6 @@ flowchart LR
 |---|---|---|---|
 | `sys_clk` | Arty 100 MHz oscillator | Control, TX clock enables, DSP scheduling, counters | Default synchronous domain |
 | `xadc_dclk` / sample event | Derived from `sys_clk` for the XADC DRP | XADC sequencing, reads, and sample-valid generation | Keep synchronous to `sys_clk` where practical; otherwise use an explicit handshake/FIFO |
-| `eth_tx_clk` | PHY/MII relationship defined by board interface | MII transmit | Async FIFO or documented MII-specific crossing |
-| `eth_rx_clk` | PHY RX clock | MII receive | Async FIFO; no bus-by-bus synchronizers |
 
 All clocks and generated clocks must be constrained. Multi-bit values may cross
 domains only through an asynchronous FIFO, a request/acknowledge snapshot, or a
@@ -166,15 +167,14 @@ The V1 wire pattern is framed so acquisition, lock, and error accounting are
 separable:
 
 ```text
-alternating preamble -> fixed sync word -> version/config/sequence header
-                     -> PRBS-15 payload -> optional guard interval
+32 alternating preamble bits -> 16-bit sync -> 16-bit frame sequence
+                              -> 1024 PRBS-15 payload bits
 ```
 
-Exact field widths are frozen in a protocol contract before RTL starts. The
-contract must include bit order, PRBS polynomial/seed, header protection,
-payload length, reset/seed behavior, lock threshold, loss-of-lock threshold,
-and which bits contribute to BER. PRBS-7 may be used for early debugging, but
-PRBS-15 is the V1 acceptance pattern.
+The exact sync word, bit order, PRBS convention/seed, reset behavior, preamble
+tolerance, and lock thresholds are frozen in `docs/protocol.md` during the
+linked milestones. PRBS-15 is the only V1 payload pattern so TX and RX do not
+accumulate parallel implementations.
 
 BER counts only payload bits compared while locked. Framing misses and lock
 losses are reported separately so the BER number cannot hide synchronization
@@ -196,22 +196,23 @@ skip range analysis:
 | Filter output | Signed 16-bit after defined rounding and saturation |
 | Timing/threshold metrics | Width derived from maximum observation window, with one sign and at least one guard bit |
 
-M1 must freeze the actual widths using worst-case bounds and model sweeps.
+Milestones 09-11 freeze the actual widths using worst-case bounds and bit-true
+tests.
 Wraparound in the signal path is not allowed. Rounding mode, tie behavior,
 saturation limits, coefficient normalization, and reset transients must be
 bit-exact between the model and RTL.
 
 ### 4.5 Timing-recovery claim boundary
 
-V1 uses oversampling and discrete sample-phase selection. At the 25
-samples/symbol qualification point, an early/late or phase-energy metric
-selects and tracks the best sample strobe. Fractional interpolation is
-deferred.
+V1 uses oversampling and training-assisted discrete sample-phase selection. At
+the 25 samples/symbol qualification point, known alternating training symbols
+measure on/off separation at every phase. The best phase and midpoint threshold
+are latched for framed receive operation. Fractional interpolation is deferred.
 
 On a single Arty board, TX and ADC conversion ultimately share the same crystal.
-Programmable NCO offsets can test phase error, rational rate mismatch, tracking,
-and reacquisition, but they do not prove tolerance to independent oscillator
-jitter or drift. Any claim of asynchronous clock recovery requires either:
+Synthetic phase offsets test all integer sample positions, but they do not prove
+tolerance to independent oscillator jitter or drift. Any claim of asynchronous
+clock recovery requires either:
 
 - a separately clocked optical transmitter;
 - a second FPGA board; or
@@ -220,14 +221,14 @@ jitter or drift. Any claim of asynchronous clock recovery requires either:
 Reports must label injected common-reference tests and independent-clock tests
 separately.
 
-### 4.6 Telemetry/control contract
+### 4.6 UART telemetry/control contract
 
-UDP is transport, not the measurement engine. Each application packet should
-contain at least:
+UART is transport, not the measurement engine. Each bounded binary packet
+contains at least:
 
 ```text
-magic | protocol version | message type | payload length | packet sequence
-FPGA timestamp | run ID | build ID | payload | application CRC32
+sync | protocol version | message type | payload length | packet sequence
+payload | CRC-16
 ```
 
 The status payload includes coherent 64-bit counters, configuration echo,
@@ -235,10 +236,10 @@ current state, lock state, rates, overflow flags, and sticky fault bits. Unknown
 protocol versions or invalid lengths are rejected. Mutating controls carry a
 transaction ID and return an acknowledgement so retries are idempotent.
 
-Required V1 controls are limited to reset/start/stop, profile selection, PRBS
-selection, filter enable/coefficient-bank selection, threshold/timing settings,
-counter snapshot/reset, and bounded sample capture. Arbitrary memory writes and
-unbounded streaming are out of scope.
+Required V1 controls are limited to info/status, start/stop, safe TX mode,
+profile selection, calibration, filter enable/coefficient-bank selection,
+bounded threshold override, counter snapshot/reset, and bounded sample capture.
+Arbitrary memory writes and unbounded streaming are out of scope.
 
 ## 5. Hardware baseline and decision gates
 
@@ -394,7 +395,7 @@ when they gain real content; empty scaffolding is unnecessary.
 │   ├── protocol.md               Optical frame and host packet specifications
 │   ├── decisions/                Numbered architecture decision records (ADRs)
 │   ├── hardware/                 Selection matrices, wiring, safety, and photos
-│   ├── milestones/               Exit reports and debugging postmortems
+│   ├── milestones/               Fifteen guides plus personal completion reports
 │   ├── benchmarks/               Reviewed summaries and compact evidence
 │   └── assets/                   Diagrams and selected plots/images
 ├── model/
@@ -407,16 +408,15 @@ when they gain real content; empty scaffolding is unnecessary.
 │   ├── dsp/                      DC removal, FIR, rounding, saturation
 │   ├── sync/                     Timing, decision, framing, PRBS lock
 │   ├── bert/                     Error/rate counters and coherent snapshots
-│   ├── network/                  PHY/MII, Ethernet, ARP, IPv4, UDP
-│   ├── control/                  Commands, status, register/config ownership
+│   ├── control/                  UART, packets, commands, status, configuration
 │   └── top/                      Milestone and final board-level tops
 ├── sim/
-│   ├── models/                   XADC, channel, PHY, and clock-offset models
+│   ├── models/                   XADC, optical/channel, and UART models
 │   ├── tb/                       Self-checking unit/integration benches
 │   └── vectors/                  Versioned deterministic vector manifests
 ├── host/
-│   ├── optical_dsp_host/         Protocol client, capture, plots, benchmark runner
-│   └── tests/                    Host protocol and analysis tests
+│   ├── optical_dsp_host/         UART protocol, state, logger, replay, dashboard
+│   └── tests/                    Host protocol, state, replay, and analysis tests
 ├── scripts/
 │   ├── fpga.ps1                  Terminal entry point for build/program cycles
 │   ├── fpga.cmd                  Windows launcher for restricted execution policies
@@ -463,161 +463,41 @@ Do not version-control:
 
 ## 7. Development milestones and exit gates
 
-Every milestone ends with a short report containing: commit, tools/versions,
-commands, configuration, tests, observed failures, accepted evidence, and open
-risks. The next milestone does not erase a failed exit criterion.
+The executable roadmap is the
+[15-step learning milestone index](milestones/README.md). Each guide is sized
+for roughly one or two focused workdays and contains learning goals, permanent
+interfaces, SystemVerilog/Python context, testbench requirements, physical
+checks, completion evidence, common traps, and an explicit scope guard.
 
-### M0 — requirements and hardware freeze
+| # | Permanent addition | Guide |
+|---:|---|---|
+| 01 | Reproducible tools, hardware inventory, safety record | [Lab, tools, and contracts](milestones/01-lab-tools-and-contracts.md) |
+| 02 | Reset synchronizer, clock enables, heartbeat | [Reset and clock enables](milestones/02-reset-and-clock-enables.md) |
+| 03 | PRBS-15 source/checker and golden convention | [PRBS-15 source and checker](milestones/03-prbs15-source-and-checker.md) |
+| 04 | OFF/ON/training/framed optical bit source | [Training pattern and framer](milestones/04-training-pattern-and-framer.md) |
+| 05 | Safe transistor-driven laser and DAOKI diagnostic | [Laser and DAOKI bring-up](milestones/05-laser-and-daoki-bringup.md) |
+| 06 | Single-channel XADC sample stream | [XADC acquisition](milestones/06-xadc-acquisition.md) |
+| 07 | Bounded capture, UART TX, packet encoder, host decoder | [Capture buffer and UART](milestones/07-capture-buffer-and-uart.md) |
+| 08 | Frozen BPW34 device/load/geometry | [BPW34 analog link](milestones/08-bpw34-analog-link.md) |
+| 09 | Bit-true running DC estimator/subtractor | [DC removal](milestones/09-dc-removal.md) |
+| 10 | Readable parameterized direct-form FIR | [FIR filter](milestones/10-fir-filter.md) |
+| 11 | Training-assisted phase/threshold and bit decisions | [Phase and threshold](milestones/11-phase-and-threshold.md) |
+| 12 | Frame lock, PRBS alignment, BER, snapshots | [Frame sync and BER](milestones/12-frame-sync-and-ber.md) |
+| 13 | UART RX, validated commands, telemetry | [UART control and telemetry](milestones/13-uart-control-and-telemetry.md) |
+| 14 | Headless logger, replay mode, local GUI | [Dashboard and host tools](milestones/14-dashboard-and-host-tools.md) |
+| 15 | Integrated bitstream, benchmarks, demo, explanation | [Integration and qualification](milestones/15-integration-and-qualification.md) |
 
-Deliver:
+Each milestone ends with a personal completion report containing the Git commit,
+tools/versions, commands, configuration, tests, observed failures, accepted
+evidence, what was learned, and remaining risks. The next milestone never erases
+a failed criterion. An integration bug is first reproduced in the responsible
+unit test and retained as a regression.
 
-- board inventory and revision;
-- XADC and optical/AFE selection documents;
-- safe wiring and power plan;
-- frozen V1 rates/profiles and protocol skeleton;
-- first architecture decisions; and
-- tool version plus terminal programming dry run.
-
-Exit:
-
-- all pre-connection checklist items are satisfied;
-- 250 kSa/s and 10 kbit/s remain feasible after delivered-part measurements;
-- no unresolved voltage/safety question remains; and
-- scope changes are captured in this plan and an ADR.
-
-### M1 — bit-true reference and impairment model
-
-Model:
-
-```text
-PRBS/framing -> OOK pulse shape -> gain/DC/noise/bandwidth/phase/rate offset
-             -> quantization -> DC removal -> FIR -> timing -> decision -> BER
-```
-
-Deliver deterministic vectors for clean, DC-offset, noisy, band-limited,
-phase-offset, rate-offset, clipped, and step-disturbed cases. Sweep coefficient
-width, tap count, accumulator width, rounding, threshold, and timing settings.
-
-Exit:
-
-- numeric widths and overflow bounds are frozen;
-- each impairment has a seed and units;
-- the selected DSP improves BER in at least one modeled impairment without
-  harming the clean case; and
-- exact expected samples/bits/counters are available for RTL tests.
-
-### M2 — digital TX/RX and BERT loopback
-
-Implement only the digital framing, PRBS, symbol timing, decision bypass,
-synchronization, counters, and debug/status needed for a clean loopback.
-
-Exit:
-
-- zero errors over at least `1e6` compared PRBS-15 bits in simulation and
-  physical digital loopback;
-- the 95% one-sided zero-error BER upper bound (`~3/N`) is reported;
-- injected bit slips/errors produce exact expected counters;
-- 25 reset/lock cycles have no false lock; and
-- timing, CDC, and DRC reports have no unexplained critical issues.
-
-### M3 — XADC acquisition and raw-sample observability
-
-Bring up A0 and the XADC using known DC levels before connecting the optical
-receiver. Verify code mapping, sample rate, 0-3.3 V external range, DC level,
-noise, and settling. Add a bounded capture buffer and sample checksum.
-
-Exit:
-
-- measured sample rate matches the configured 250 kSa/s schedule or any
-  conversion/averaging difference is explained;
-- `>= 1.5e8` continuous scheduled samples (10 minutes at 250 kSa/s) produce no
-  dropped, duplicated, or discontinuous sample event;
-- a known low-frequency waveform has correct frequency, ordering, and
-  non-inverted code mapping;
-- dark/grounded-input noise and DC offset are reported, not hidden; and
-- capture transfer cannot backpressure acquisition.
-
-### M4 — physical optical transport without receive DSP
-
-First use the DAOKI digital receiver for alignment and very-low-rate polarity
-checks. Then connect the verified BPW34/load circuit to A0, operate at 1 kbit/s,
-and advance to the 10 kbit/s qualification rate with filter/timing correction
-bypassed or fixed.
-
-Exit:
-
-- optical on/off levels and ADC headroom are recorded for indexed channel
-  conditions;
-- no clipping occurs in the nominal condition;
-- framing and PRBS lock operate for 10 minutes at the nominal condition;
-- baseline BER and confidence bounds are reported at clean and at least three
-  degraded settings; and
-- loss/recovery behavior is deterministic when the path is blocked/unblocked.
-
-### M5 — fixed-point receive DSP
-
-Add DC removal, the programmable 16-tap baseline FIR, defined rounding and
-saturation, coefficient banks, and threshold decision. Match the model at
-every stage before relying on BER.
-
-Exit:
-
-- RTL is bit-exact against all accepted M1 vectors;
-- clean-link output is not degraded;
-- no internal overflow occurs in the qualified configuration;
-- DSP-on and DSP-off runs compare the same bit count and physical condition;
-- the acceptance impairment shows a statistically distinguishable BER
-  reduction with non-overlapping 95% confidence intervals; 10x is the stretch
-  target, not a condition manufactured by cherry-picking; and
-- latency and resource cost are measured for 8- and 16-tap builds; 32 taps is
-  an optional comparison.
-
-### M6 — timing selection, tracking, and reacquisition
-
-Add phase metrics, sample-strobe selection, lock hysteresis, and controlled
-NCO rate offsets. Keep common-reference and independent-clock evidence
-separate.
-
-Exit:
-
-- all 25 initial integer sample phases acquire at the qualification profile;
-- lock acquisition is `<= 2048` symbols in the declared clean condition;
-- reacquisition is `<= 4096` symbols after a 100-symbol interruption;
-- the system tracks the frozen injected rate-offset range with bounded BER;
-- no false-lock event occurs across 25 randomized starts; and
-- the final report precisely limits the clock-recovery claim.
-
-### M7 — Ethernet telemetry and host control
-
-Add coherent counter snapshots, protocol validation, UDP transmit/receive,
-idempotent controls, and a headless host qualification command before building
-any dashboard.
-
-Exit:
-
-- 6,000 consecutive 10 Hz status packets (10 minutes) have zero malformed
-  messages and all sequence gaps are explained/reportable;
-- bad magic/version/length/CRC and duplicate command transactions are tested;
-- host disconnect/reconnect cannot stop or reset the BERT;
-- reported snapshots are coherent across multiword counters;
-- bounded sample capture does not create acquisition overflow; and
-- host protocol tests run without hardware using recorded fixtures.
-
-### M8 — integrated qualification and demo
-
-Freeze the bitstream, run the complete benchmark matrix, archive evidence, and
-perform a fresh-machine reproduction of the documented commands.
-
-Exit:
-
-- every V1 success item and mandatory benchmark passes;
-- routed timing is clean and CDC/DRC issues are reviewed;
-- the bitstream SHA-256, Git commit, dirty-state flag, Vivado version, hardware
-  IDs, settings, and test timestamps are in the manifest;
-- another person can program and run the demo from a VS Code terminal without
-  opening Vivado; and
-- README results state measured facts and clearly separate qualification,
-  stretch, modeled, and theoretical values.
+This sequence is intentionally cumulative. Milestone tops and diagnostic modes
+may remain for regression, but shared logic is neither copied nor replaced by a
+second “improved prototype.” Optional TIA, external ADC, Ethernet, adaptive DSP,
+and independent-clock work begins only after Milestone 15 or after a measured
+baseline blocker is documented.
 
 ## 8. Verification strategy
 
@@ -626,10 +506,10 @@ Exit:
 | Layer | Required checks |
 |---|---|
 | Pure functions | PRBS step, CRC, saturation, rounding, coefficient load, packet encode/decode |
-| RTL units | XADC capture, DC removal, FIR, timing metric, decision, sync, BERT, snapshot, FIFO, UDP fields |
+| RTL units | XADC capture, UART, packet codec, DC removal, FIR, calibration, decision, sync, BERT, snapshot |
 | Integration | Clean link, each impairment, lock/loss/relock, counter injection, backpressure boundaries, resets |
-| CDC/reset | Independent clock ratios/phases, reset assertion/deassertion, FIFO full/empty edges, snapshot coherency |
-| Network | Golden frame bytes, checksum/FCS, malformed controls, loss/reorder/duplicate host fixtures |
+| CDC/reset | Reset assertion/deassertion, asynchronous diagnostic input, UART sampling, snapshot coherency |
+| Host | Golden packets, CRC, malformed controls, disconnect/reconnect, replay, duplicate transactions |
 | Hardware | Electrical XADC checks, optical sweep, long runs, benchmark matrix, power-cycle reproduction |
 
 Testbenches are self-checking and terminate with an unambiguous pass/fail exit
@@ -645,8 +525,8 @@ code. Waveform inspection helps debugging but is not an acceptance oracle.
   word, and mid-frame reset.
 - Phase step, rate step, signal loss, clipping, large DC shift, and recovery.
 - Counter rollover/saturation policy and snapshot during counter updates.
-- Ethernet frame corruption, wrong destination, invalid IP/UDP length/checksum,
-  duplicate transaction, and host disappearance.
+- UART false start/framing error, invalid packet version/length/CRC, duplicate
+  transaction, partial-packet timeout, and host disappearance.
 
 ### 8.3 Reproducibility manifest
 
@@ -672,9 +552,8 @@ result file names/SHA-256, operator notes, pass/fail reasons
 | Sustained acquisition | Scheduled vs accepted samples and all overflow/discontinuity counters | 250 kSa/s for `>=1.5e8` samples; zero loss/error | Counter snapshot + capture checksum + manifest |
 | Clean digital BER | PRBS-15 payload bits compared while locked | 0 errors in `>=1e6` bits; report `~3/N` 95% upper bound | Hardware counters and run duration |
 | Nominal optical BER | Same definition, BPW34/XADC physical path at 10 kbit/s | Measure for `>=1e6` bits; target 0 errors, report CI regardless | Indexed condition + counters |
-| DSP benefit | Paired DSP-off/on runs at unchanged degraded condition | Statistically lower BER with non-overlapping 95% intervals; 10x is a stretch target | Raw counts, confidence intervals, paired manifest |
-| Phase acquisition | Start at every discrete sample phase | 25/25 acquire within 2,048 symbols | Automated phase sweep |
-| Rate-offset tolerance | Injected TX/ADC NCO mismatch at fixed condition | Freeze range in M1; zero unexplained lock loss inside range | BER/lock vs signed ppm plot |
+| DSP comparison | Paired DSP-off/on runs at unchanged degraded condition | Complete paired counts and confidence analysis; do not degrade nominal link; statistically lower BER is a stretch claim | Raw counts, confidence intervals, paired manifest |
+| Phase calibration | Test every synthetic phase and repeat physical realignment | 25/25 synthetic cases pass; three physical realignments produce valid calibration | Automated phase sweep + hardware log |
 | Reacquisition | Block or suppress signal for 100 symbols | Lock returns within 4,096 symbols | Timestamped lock trace |
 | DSP latency | Accepted ADC sample to decided-symbol event, excluding channel/ADC aperture | Measured exactly; target `<256` sample periods | Simulation assertion + hardware timestamp where possible |
 | Routed timing | Worst setup/hold slack for all declared clocks | WNS `>=0`, WHS `>=0`; no unconstrained endpoints | Timing summary |
@@ -683,10 +562,11 @@ result file names/SHA-256, operator notes, pass/fail reasons
 | Telemetry integrity | Packet sequence/CRC at 10 Hz direct link | 6,000 packets over 10 minutes; 0 malformed; 0 unexplained gaps | Host capture summary |
 | Recovery stability | Power/reset, acquire, run, interrupt, reacquire | 25 automated cycles; no false lock or stuck state | Cycle log + summary |
 
-The nominal optical target is a goal, while the DSP-improvement criterion is
-the essential project claim. If the nominal physical link cannot reach zero
-errors, publish the measured BER rather than shortening the run until it looks
-clean.
+The physical-link proof, hand-written DSP path, and controlled comparison are
+the essential project results. A statistically significant DSP improvement is
+a stronger stretch claim, not permission to cherry-pick a run. If the nominal
+link has errors or the paired comparison is neutral, publish the measured result
+and confidence rather than shortening or selecting runs until they look clean.
 
 ### 9.2 Benchmark controls
 
@@ -696,8 +576,8 @@ clean.
 - Use an exact binomial interval. For zero errors, report the one-sided 95%
   upper bound (approximately `3/N`) instead of `BER = 0`.
 - Randomize or alternate DSP-off/on run order when drift could bias results.
-- Separate acquisition/DSP capacity, optical line rate, Ethernet throughput,
-  and host rendering rate. They are different measurements.
+- Separate acquisition/DSP capacity, optical line rate, UART diagnostic
+  throughput, and host rendering rate. They are different measurements.
 - A maximum rate must pass the full duration and integrity criteria; a momentary
   lock or timing estimate is not throughput.
 - Re-run synthesis/implementation benchmarks after any functional RTL,
@@ -707,13 +587,13 @@ clean.
 
 - BER and confidence interval vs indexed channel degradation, DSP off/on.
 - BER vs symbol rate for 1, 10, and optional 25 kbit/s profiles.
-- BER/lock vs initial sample phase and signed injected clock offset.
+- Calibration score/decision result versus all 25 integer sample phases.
 - Lock acquisition/reacquisition distribution, not only the best case.
 - FIR tap count vs LUT/FF/BRAM/DSP, Fmax, initiation interval, and latency.
-- ADC input histogram/noise for dark, nominal off, nominal on, and degraded
+- XADC input histogram/noise for dark, nominal off, nominal on, and degraded
   conditions.
 - Routed resource and timing summary by major hierarchy.
-- UDP packet integrity and sequence statistics for the long run.
+- UART packet integrity and sequence statistics for the long run.
 
 ## 10. Terminal-first build and programming flow
 
@@ -782,19 +662,19 @@ does not clear root-cause counters unless explicitly requested.
 
 | Risk | Consequence | Early test / mitigation | Decision point |
 |---|---|---|---|
-| Generic DAOKI modules differ from listing | Wrong pinout, unsafe logic level, or lower bandwidth | Inspect markings; current/voltage tests before FPGA connection; treat listing claims as provisional | M0 |
-| Generic BPW34-style devices vary or are counterfeit | Unrepeatable sensitivity/noise | Screen all five, assign device IDs, retain raw dark/on captures; use genuine Vishay only if needed | M0/M4 |
-| Passive receiver sensitivity/bandwidth tradeoff | Signal is too small or transitions are too slow | Sweep load resistance at 1 kbit/s; add a TIA only after measured evidence | M0/M4 |
-| XADC bandwidth/noise is inadequate | Limits stretch rate or measurable DSP gain | Use 250 kSa/s/10 kbit/s baseline; characterize A0 before buying an external ADC | M0/M3 |
-| AFE clips or is too noisy | DSP benchmark becomes meaningless | Measure dark/on/max levels before A0; calculate gain/headroom | M0/M4 |
-| Shared TX/RX reference overstated as clock recovery | Invalid synchronization claim | Label NCO injection; require independent clock for stronger claim | M1/M6 |
-| PRBS BER hides lock failures | Misleading reliability | Count framing/lock losses separately; compare only while locked | M2 |
-| Host backpressure drops ADC data | Invalid continuous-processing claim | Bounded capture tap; no backpressure into acquisition | M3/M7 |
-| UDP loss confused with link BER | Mixed measurement domains | Separate optical bit, frame, FPGA FIFO, and network counters | M7 |
-| Fixed-point overflow or silent wrap | Model/RTL mismatch and false gain | Bound widths, assert overflow, saturate explicitly | M1/M5 |
+| Generic DAOKI modules differ from listing | Wrong pinout, unsafe logic level, or lower bandwidth | Inspect markings; current/voltage tests before FPGA connection; treat listing claims as provisional | 01/05 |
+| Generic BPW34-style devices vary or are counterfeit | Unrepeatable sensitivity/noise | Screen all five, assign device IDs, retain raw dark/on captures; use genuine Vishay only if needed | 01/08 |
+| Passive receiver sensitivity/bandwidth tradeoff | Signal is too small or transitions are too slow | Sweep one socketed load at fixed geometry; freeze the choice before DSP | 08 |
+| XADC bandwidth/noise is inadequate | Limits stretch rate or measurable DSP gain | Use 250 kSa/s/10 kbit/s baseline; characterize A0 before buying an external ADC | 06/08 |
+| AFE clips or is too noisy | DSP benchmark becomes meaningless | Measure dark/on/max levels before A0; calculate gain/headroom | 08 |
+| Shared TX/RX reference overstated as clock recovery | Invalid synchronization claim | Call it training-assisted phase selection; require independent clock for stronger claim | 11/15 |
+| PRBS BER hides lock failures | Misleading reliability | Count framing/lock losses separately; compare only aligned payload bits | 12 |
+| Host backpressure drops XADC data | Invalid continuous-processing claim | Bounded capture tap; no backpressure into acquisition | 07/13 |
+| UART loss confused with optical BER | Mixed measurement domains | Separate optical bit/frame counters from UART/packet counters | 13/14 |
+| Fixed-point overflow or silent wrap | Model/RTL mismatch and false gain | Bound widths, assert overflow, saturate explicitly | 09/10 |
 | CDC/reset defect appears only on hardware | Intermittent lock/data corruption | Randomized clocks/resets, structural CDC review, sticky faults | Every milestone |
-| Tool/project state is not reproducible | Works only in one GUI project | Tcl-created build, stable outputs, clean-clone reproduction | M2 onward |
-| Benchmark cherry-picking | Unsupported DSP claim | Predeclare matrix, paired conditions, raw counts and CIs | M1/M8 |
+| Tool/project state is not reproducible | Works only in one GUI project | Tcl-created build, stable outputs, clean-clone reproduction | 01 onward |
+| Benchmark cherry-picking | Unsupported DSP claim | Predeclare matrix, paired conditions, raw counts and CIs | 08/15 |
 | Hardware damage or eye hazard | Safety failure | Transistor drive, verified voltage levels, matte beam stop, short enclosed path, no eye-level operation | Before connection |
 | Scope expands into high-speed optics | V1 never closes | Enforce deferred list; use ADR for profile changes | Every review |
 
@@ -811,7 +691,7 @@ Create numbered ADRs under `docs/decisions/` for:
 6. fixed-point widths, rounding, saturation, and FIR architecture;
 7. timing-recovery algorithm and accepted claim boundary;
 8. clock/reset/CDC policy;
-9. Ethernet stack reuse/provenance and packet protocol; and
+9. UART packet protocol, configuration ownership, and dashboard boundary; and
 10. benchmark statistics, impairment method, and evidence retention.
 
 Each ADR records context, decision, alternatives, consequences, and what
@@ -819,26 +699,16 @@ measurement would trigger reconsideration.
 
 ## 14. Immediate work queue
 
-No optical-interface RTL should begin until items 1–4 are resolved.
-
-1. Confirm the physical Arty board is the A7-100T and record its revision.
-2. On arrival, inventory and photograph every DAOKI and BPW34-style device;
-   verify module pinouts and assign hardware IDs.
-3. Build and measure the transistor-driven DAOKI path and the passive 10 kΩ
-   BPW34 path without connecting either receiver output to the FPGA.
-4. Complete the XADC/optical selection records and every pre-connection
-   checklist item; freeze the 250 kSa/s, 1/10/25 kbit/s profiles from the
-   measurements.
-5. Freeze the frame/PRBS and fixed-point model contracts.
-6. Run the terminal programming wrapper in `-DryRun` mode, then with a known
-   safe bitstream when hardware is attached.
-7. Implement M1 only after the above decisions are reviewed.
+Begin with [Milestone 01](milestones/01-lab-tools-and-contracts.md). Complete one
+guide and its personal completion report before starting the next. Do not begin
+physical laser work before the hardware checklist is complete, and do not begin
+DSP coding before Milestone 08 freezes the measured receiver range.
 
 ## 15. Definition of done
 
-The project is done when M8 exits, not when a bitstream is generated. The final
-repository must contain a concise, reproducible chain from requirements to
-evidence:
+The project is done when Milestone 15 exits, not when a bitstream is generated.
+The final repository must contain a concise, reproducible chain from
+requirements to evidence:
 
 ```text
 declared hardware + protocol + numeric contract
@@ -863,4 +733,4 @@ declared hardware + protocol + numeric contract
 
 Part/module datasheets, board schematics, and exact revision documents must be
 archived as URLs and revision identifiers in the hardware decision records;
-this reference list is not a substitute for the M0 electrical review.
+this reference list is not a substitute for the Milestone 01 electrical review.
