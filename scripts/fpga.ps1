@@ -132,14 +132,33 @@ function Invoke-VivadoBatch {
         return
     }
 
+    # Vivado loads user Tcl apps before reading HDL. Keep batch builds isolated
+    # from optional GUI-installed apps, and use an 8.3 path because the Tcl App
+    # Store mishandles spaces in Windows profile paths.
+    $VivadoProfileDirectory = Join-Path $RepositoryDirectory "artifacts\vivado-profile"
+    $VivadoRoamingDirectory = Join-Path $VivadoProfileDirectory "AppData\Roaming"
+    New-Item -ItemType Directory -Path $VivadoRoamingDirectory -Force | Out-Null
+
+    $FileSystemObject = New-Object -ComObject Scripting.FileSystemObject
+    $VivadoProfilePath = $FileSystemObject.GetFolder($VivadoProfileDirectory).ShortPath
+    $VivadoRoamingPath = $FileSystemObject.GetFolder($VivadoRoamingDirectory).ShortPath
+
+    $SavedUserProfile = $env:USERPROFILE
+    $SavedAppData = $env:APPDATA
+
     Push-Location $RepositoryDirectory
     try {
+        $env:USERPROFILE = $VivadoProfilePath
+        $env:APPDATA = $VivadoRoamingPath
+
         & $Vivado @Arguments
         if ($LASTEXITCODE -ne 0) {
             throw "Vivado $StepName failed with exit code $LASTEXITCODE. See $LogPath"
         }
     }
     finally {
+        $env:USERPROFILE = $SavedUserProfile
+        $env:APPDATA = $SavedAppData
         Pop-Location
     }
 }
