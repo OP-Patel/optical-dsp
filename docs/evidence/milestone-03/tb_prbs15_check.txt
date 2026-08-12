@@ -1,0 +1,31 @@
+#-----------------------------------------------------------
+# xsim v2026.1 (64-bit)
+# SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+# IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+# SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+# Start of session at: Tue Aug 11 22:43:03 2026
+# Process ID         : 35552
+# Current directory  : C:/Users/Om Patel/Desktop/arty-optical-dsp
+# Command line       : xsim.exe -log docs/evidence/milestone-03/tb_prbs15_check.txt -mode tcl -source {xsim.dir/tb_prbs15_check_evidence/xsim_script.tcl}
+# Log file           : C:/Users/Om Patel/Desktop/arty-optical-dsp/docs/evidence/milestone-03/tb_prbs15_check.txt
+# Journal file       : C:/Users/Om Patel/Desktop/arty-optical-dsp\xsim.jou
+# Running On         : Om
+# Platform           : Windows 11
+# Operating System   : 26200
+# Processor Detail   : Intel(R) Core(TM) Ultra 9 185H
+# CPU Frequency      : 3072 MHz
+# CPU Physical cores : 16
+# CPU Logical cores  : 22
+# Host memory        : 33945 MB
+# Swap memory        : 8053 MB
+# Total Virtual      : 41998 MB
+# Available Virtual  : 4679 MB
+#-----------------------------------------------------------
+source xsim.dir/tb_prbs15_check_evidence/xsim_script.tcl
+# xsim {tb_prbs15_check_evidence} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+PASS: tb_prbs15_check verified 100000 clean bits and exact flips at 0,17,999; checks=101089
+$finish called at time : 1010770 ns : File "C:/Users/Om Patel/Desktop/arty-optical-dsp/rtl/tb/tb_prbs15_check.sv" Line 186
+exit
+INFO: [Common 17-206] Exiting xsim at Tue Aug 11 22:43:05 2026...

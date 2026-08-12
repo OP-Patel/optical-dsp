@@ -117,11 +117,11 @@ before the seed repeats and that zero never appears.
 
 ## Done when
 
-- [ ] The sequence convention is unambiguous.
-- [ ] The generator passes its golden-vector and full-period tests.
-- [ ] The checker reports exact injected errors and compared-bit counts.
-- [ ] Both blocks advance only on explicit valid/enable events.
-- [ ] The zero-state behavior is intentional and tested.
+- [x] The sequence convention is unambiguous.
+- [x] The generator passes its golden-vector and full-period tests.
+- [x] The checker reports exact injected errors and compared-bit counts.
+- [x] Both blocks advance only on explicit valid/enable events.
+- [x] The zero-state behavior is intentional and tested.
 
 ## Common traps
 
