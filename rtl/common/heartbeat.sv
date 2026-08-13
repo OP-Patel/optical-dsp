@@ -11,8 +11,8 @@ module heartbeat #(
     clock_enable_gen #(
         .DIVISOR(DIVISOR)
     ) heartbeat_gen (
-        .clk    (clk),
-        .rst    (rst),
+        .clk(clk),
+        .rst(rst),
         .enable (enable)
     );
 

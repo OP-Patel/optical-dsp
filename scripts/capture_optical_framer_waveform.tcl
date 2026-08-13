@@ -1,0 +1,16 @@
+open_vcd docs/evidence/milestone-04/optical_framer_waveform.vcd
+log_vcd /tb_optical_framer_waveform/clk
+log_vcd /tb_optical_framer_waveform/rst
+log_vcd /tb_optical_framer_waveform/symbol_ce
+log_vcd /tb_optical_framer_waveform/mode
+log_vcd /tb_optical_framer_waveform/tx_bit
+log_vcd /tb_optical_framer_waveform/frame_start
+log_vcd /tb_optical_framer_waveform/payload_start
+log_vcd /tb_optical_framer_waveform/frame_sequence
+log_vcd /tb_optical_framer_waveform/dut/frame_state
+log_vcd /tb_optical_framer_waveform/dut/field_index
+log_vcd /tb_optical_framer_waveform/dut/prbs_load_seed
+log_vcd /tb_optical_framer_waveform/dut/prbs_advance
+run all
+close_vcd
+quit

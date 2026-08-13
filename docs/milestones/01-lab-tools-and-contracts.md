@@ -98,11 +98,11 @@ Create `docs/milestones/completions/01-lab-tools.md` containing:
 
 ## Done when
 
-- [ ] The toolchain is reproducible from a VS Code terminal.
-- [ ] The correct FPGA is visible over JTAG.
-- [ ] Primary hardware sources and local device IDs are recorded.
-- [ ] The safe optical workspace and beam stop exist.
-- [ ] No unresolved board-model or voltage-domain ambiguity remains.
+- [x] The toolchain is reproducible from a VS Code terminal.
+- [x] The correct FPGA is visible over JTAG.
+- [x] Primary hardware sources and local device IDs are recorded.
+- [x] The safe optical workspace and beam stop exist.
+- [x] No unresolved board-model or voltage-domain ambiguity remains.
 
 ## Scope guard
 

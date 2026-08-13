@@ -125,11 +125,11 @@ verified PRBS golden vector. Do not simply inspect a waveform.
 
 ## Done when
 
-- [ ] All four modes are deterministic and safe on reset.
-- [ ] The frame is exactly 1088 symbols under stalls in `symbol_ce`.
-- [ ] PRBS control aligns exactly with payload boundaries.
-- [ ] Mode changes follow a documented, tested rule.
-- [ ] The module is independent of the laser pin and physical hardware.
+- [x] All four modes are deterministic and safe on reset.
+- [x] The frame is exactly 1088 symbols under stalls in `symbol_ce`.
+- [x] PRBS control aligns exactly with payload boundaries.
+- [x] Mode changes follow a documented, tested rule.
+- [x] The module is independent of the laser pin and physical hardware.
 
 ## What this unlocks
 

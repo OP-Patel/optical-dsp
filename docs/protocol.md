@@ -1,5 +1,24 @@
 # Optical-link protocol conventions
 
+## V1 optical frame convention
+
+| Field | Width | Frozen value/source | Bit order |
+|---|---:|---|---|
+| Alternating preamble | 32 bits | `32'hAAAAAAAA` | MSB first; begins with `1` |
+| Sync word | 16 bits | `16'hD5B3` | MSB first |
+| Frame sequence | 16 bits | Starts at zero and increments after each completed frame | MSB first |
+| PRBS-15 payload | 1024 bits | Reload `15'h0001` at every payload start | Current PRBS output before advance |
+
+The complete frame is 1088 transmitted symbols. Logical `1` commands the
+laser on and logical `0` commands it off. Reset forces the logical transmitter
+output low, resets the sequence to zero, and parks the framer at preamble bit
+zero.
+
+Transmit modes are `OFF`, `ON`, `TRAINING`, and `FRAMED`. A mode request takes
+effect immediately. Leaving `FRAMED` aborts the partial frame, and returning to
+`FRAMED` starts a new frame at preamble bit zero. Entering `TRAINING` restarts
+the alternating pattern at `1`. All symbol state advances only on `symbol_ce`.
+
 ## PRBS-15 payload convention
 
 The payload source and checker use one frozen PRBS-15 convention so that the

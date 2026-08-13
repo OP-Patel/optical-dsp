@@ -1,0 +1,32 @@
+Milestone 04 isolated synthesis summary
+Tool: Vivado v2026.1 (64-bit), build 6511674
+Part: xc7a100tcsg324-1
+Top: optical_framer
+
+Synthesis finished with 0 errors, 0 critical warnings and 0 warnings.
+Vivado inferred frame_state_reg as a four-state sequential FSM:
+  FRAME_PREAMBLE = 00
+  FRAME_SYNC = 01
+  FRAME_SEQUENCE = 10
+  FRAME_PAYLOAD = 11
+
+Post-synthesis utilization:
+  Slice LUTs: 42
+  Slice registers: 46
+  Registers as flip-flops: 46
+  Registers as latches: 0
+  BUFG: 1 (the top-level clk input)
+
+No clock is created in RTL. All sequential processes use the top-level clk,
+and symbol_ce is used as a clock enable.
+
+The isolated-module DRC report contains only the expected missing pin,
+I/O-standard, and configuration-voltage notices. Board pin integration is
+deliberately deferred to Milestone 05.
+
+Full generated reports:
+  artifacts/logs/20260812-203029-build.log
+  artifacts/reports/milestone-04-utilization.rpt
+  artifacts/reports/milestone-04-timing-summary.rpt
+  artifacts/reports/milestone-04-drc.rpt
+  artifacts/reports/milestone-04-synth.dcp

@@ -122,11 +122,11 @@ restarts predictably.
 
 ## Done when
 
-- [ ] Reset is synchronized once and used consistently.
-- [ ] Enable pulses have exact width and interval in automated tests.
-- [ ] The heartbeat runs and resets on physical hardware.
-- [ ] Both modules have comments describing their contracts, not every line.
-- [ ] No gated or divided clock has been introduced.
+- [x] Reset is synchronized once and used consistently.
+- [x] Enable pulses have exact width and interval in automated tests.
+- [x] The heartbeat runs and resets on physical hardware.
+- [x] Both modules have comments describing their contracts, not every line.
+- [x] No gated or divided clock has been introduced.
 
 ## Common traps
 
