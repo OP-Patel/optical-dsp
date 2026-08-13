@@ -1,10 +1,10 @@
-# Milestone 15 — Integration, qualification, and demo
+# Milestone 14 — Integration, qualification, and demo
 
 **Time box:** 2 days for the baseline run; repeat only when a failed criterion
 identifies a real defect
 **Depends on:** All previous milestones
-**Produces:** A timing-clean bitstream, repeatable physical benchmark, dashboard
-demo, and defensible project explanation
+**Produces:** A timing-clean bitstream, repeatable physical benchmark, headless
+evidence archive, and defensible project explanation
 
 ## Why this milestone exists
 
@@ -20,7 +20,7 @@ reset/timing
   -> PRBS/framer -> output guard -> transistor/DAOKI laser
   -> XADC -> capture tap -> DC removal -> FIR
   -> phase/threshold -> frame sync -> PRBS checker/BER counters
-  -> snapshot/control/telemetry -> UART -> host tools/dashboard
+  -> snapshot/control/telemetry -> UART -> host command/logger tools
 ```
 
 Keep named intermediate taps for raw XADC, DC-removed output, FIR output, and
@@ -84,7 +84,7 @@ that preserve event ordering while shortening divisors and payloads.
 | Reacquisition | Restore lock within the declared bound after a 100-symbol block/interruption |
 | Recovery stability | 25 start/calibrate/lock/interruption/relock cycles with no false lock or stuck state |
 | Telemetry | 6,000 packets over 10 minutes with zero malformed packets and no unexplained sequence gaps |
-| Host independence | Closing the dashboard does not reset or stop hardware measurement |
+| Host independence | Closing the command/logger process does not reset or stop hardware measurement |
 | Capture integrity | Raw/DC/FIR capture metadata, CRC, count, and sample indices are valid |
 
 For zero errors in `N` bits, report the one-sided 95% upper bound (`~3/N`). For
@@ -114,13 +114,13 @@ Write a short, repeatable demonstration sequence:
 
 1. Show the repository milestone map and hardware wiring.
 2. Build/program from the VS Code terminal without opening Vivado.
-3. Open the dashboard and verify build/hardware identity.
+3. Query build/hardware identity with the headless host utility.
 4. Run calibration and explain chosen phase/threshold.
-5. Start framed PRBS transmission and show lock/BER counters.
-6. Display raw, DC-removed, and FIR sample captures.
+5. Start framed PRBS transmission and print or save lock/BER counters.
+6. Save raw, DC-removed, and FIR sample captures for offline inspection.
 7. Block the beam, show lock loss, unblock, and show reacquisition.
 8. Toggle filter bypass/bank through an acknowledged command.
-9. Stop and open the saved manifest/results.
+9. Stop and inspect the saved manifest/results.
 
 Aim for five to eight minutes. Every visible number should have a definition you
 can explain.
@@ -138,7 +138,7 @@ Be prepared to explain, in your own words:
 - how frame synchronization differs from PRBS comparison;
 - why BER requires a numerator, denominator, lock definition, and confidence;
 - how coherent snapshots and transaction IDs keep the host honest;
-- why the dashboard is instrumentation rather than the receiver; and
+- why the host command/logger tools are instrumentation rather than the receiver; and
 - which upgrades measurements justify, versus features merely left out.
 
 ## Final repository evidence
@@ -160,7 +160,7 @@ artifacts/runs/<run-id>/             ignored raw evidence with manifest/hashes
 - [ ] Every milestone completion checklist and regression passes.
 - [ ] The terminal creates and programs a timing-clean identified bitstream.
 - [ ] The 10 kbit/s physical qualification matrix is complete.
-- [ ] Dashboard controls, capture, logging, disconnect, and replay work.
+- [ ] CLI controls, capture, logging, and disconnect/reconnect work.
 - [ ] Results include limitations and confidence, not only best-case screenshots.
 - [ ] Another person can follow the README and reproduce the demonstration.
 - [ ] You can explain every major block without reading the source line by line.

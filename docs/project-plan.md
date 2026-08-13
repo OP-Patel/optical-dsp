@@ -53,7 +53,7 @@ host assistance:
 7. count compared bits, bit errors, frames, lock losses, dropped samples, and
    transport errors in hardware;
 8. expose coherent statistics and bounded captures over USB-UART to a local
-   headless logger and dashboard;
+   headless command utility and evidence logger;
 9. run a controlled, paired DSP-off/on comparison and report whether the DSP
    changes BER and signal quality, including a neutral result if confidence is
    insufficient; and
@@ -82,7 +82,7 @@ result, not completion.
 - Self-checking simulation, bit-true software models, hardware qualification,
   and machine-readable benchmark evidence.
 - A bounded UART control/telemetry protocol, reusable Python host library,
-  headless evidence logger, replay mode, and local dashboard application.
+  headless command utility, and evidence logger.
 
 ### 3.2 Explicitly deferred
 
@@ -94,7 +94,7 @@ result, not completion.
 - A purchased external ADC unless the onboard XADC is proven to be the limiting
   factor after the 25 kbit/s stretch profile is attempted.
 - Ethernet/IPv4/UDP transport. It is a post-V1 upgrade after the local UART
-  dashboard and qualification are complete.
+  tooling and qualification are complete.
 - General-purpose TCP, DHCP, web serving, or a full commercial network stack.
 - DDR buffering in the critical receive path.
 - Fractional-delay interpolation, Gardner/Mueller-and-Muller recovery, or
@@ -123,7 +123,7 @@ flowchart LR
     SYNC --> BERT["64-bit BER + link counters"]
     BERT --> SNAP["Coherent status snapshot"]
     SNAP --> UART["Bounded UART packets"]
-    UART <--> HOST["Host library, logger, dashboard"]
+    UART <--> HOST["Host command utility + evidence logger"]
     UART --> CTRL["Validated idempotent controls"]
     CTRL --> FRAME
     CTRL --> FIR
@@ -395,7 +395,7 @@ when they gain real content; empty scaffolding is unnecessary.
 │   ├── protocol.md               Optical frame and host packet specifications
 │   ├── decisions/                Numbered architecture decision records (ADRs)
 │   ├── hardware/                 Selection matrices, wiring, safety, and photos
-│   ├── milestones/               Fifteen guides plus personal completion reports
+│   ├── milestones/               Fourteen guides plus personal completion reports
 │   ├── benchmarks/               Reviewed summaries and compact evidence
 │   └── assets/                   Diagrams and selected plots/images
 ├── model/
@@ -415,8 +415,8 @@ when they gain real content; empty scaffolding is unnecessary.
 │   ├── tb/                       Self-checking unit/integration benches
 │   └── vectors/                  Versioned deterministic vector manifests
 ├── host/
-│   ├── optical_dsp_host/         UART protocol, state, logger, replay, dashboard
-│   └── tests/                    Host protocol, state, replay, and analysis tests
+│   ├── optical_dsp_host/         UART protocol, commands, state, and evidence logger
+│   └── tests/                    Host protocol, command, logger, and analysis tests
 ├── scripts/
 │   ├── fpga.ps1                  Terminal entry point for build/program cycles
 │   ├── fpga.cmd                  Windows launcher for restricted execution policies
@@ -464,7 +464,7 @@ Do not version-control:
 ## 7. Development milestones and exit gates
 
 The executable roadmap is the
-[15-step learning milestone index](milestones/README.md). Each guide is sized
+[14-step learning milestone index](milestones/README.md). Each guide is sized
 for roughly one or two focused workdays and contains learning goals, permanent
 interfaces, SystemVerilog/Python context, testbench requirements, physical
 checks, completion evidence, common traps, and an explicit scope guard.
@@ -484,8 +484,7 @@ checks, completion evidence, common traps, and an explicit scope guard.
 | 11 | Training-assisted phase/threshold and bit decisions | [Phase and threshold](milestones/11-phase-and-threshold.md) |
 | 12 | Frame lock, PRBS alignment, BER, snapshots | [Frame sync and BER](milestones/12-frame-sync-and-ber.md) |
 | 13 | UART RX, validated commands, telemetry | [UART control and telemetry](milestones/13-uart-control-and-telemetry.md) |
-| 14 | Headless logger, replay mode, local GUI | [Dashboard and host tools](milestones/14-dashboard-and-host-tools.md) |
-| 15 | Integrated bitstream, benchmarks, demo, explanation | [Integration and qualification](milestones/15-integration-and-qualification.md) |
+| 14 | Integrated bitstream, benchmarks, demo, explanation | [Integration and qualification](milestones/14-integration-and-qualification.md) |
 
 Each milestone ends with a personal completion report containing the Git commit,
 tools/versions, commands, configuration, tests, observed failures, accepted
@@ -496,7 +495,7 @@ unit test and retained as a regression.
 This sequence is intentionally cumulative. Milestone tops and diagnostic modes
 may remain for regression, but shared logic is neither copied nor replaced by a
 second “improved prototype.” Optional TIA, external ADC, Ethernet, adaptive DSP,
-and independent-clock work begins only after Milestone 15 or after a measured
+and independent-clock work begins only after Milestone 14 or after a measured
 baseline blocker is documented.
 
 ## 8. Verification strategy
@@ -667,14 +666,14 @@ does not clear root-cause counters unless explicitly requested.
 | Passive receiver sensitivity/bandwidth tradeoff | Signal is too small or transitions are too slow | Sweep one socketed load at fixed geometry; freeze the choice before DSP | 08 |
 | XADC bandwidth/noise is inadequate | Limits stretch rate or measurable DSP gain | Use 250 kSa/s/10 kbit/s baseline; characterize A0 before buying an external ADC | 06/08 |
 | AFE clips or is too noisy | DSP benchmark becomes meaningless | Measure dark/on/max levels before A0; calculate gain/headroom | 08 |
-| Shared TX/RX reference overstated as clock recovery | Invalid synchronization claim | Call it training-assisted phase selection; require independent clock for stronger claim | 11/15 |
+| Shared TX/RX reference overstated as clock recovery | Invalid synchronization claim | Call it training-assisted phase selection; require independent clock for stronger claim | 11/14 |
 | PRBS BER hides lock failures | Misleading reliability | Count framing/lock losses separately; compare only aligned payload bits | 12 |
 | Host backpressure drops XADC data | Invalid continuous-processing claim | Bounded capture tap; no backpressure into acquisition | 07/13 |
 | UART loss confused with optical BER | Mixed measurement domains | Separate optical bit/frame counters from UART/packet counters | 13/14 |
 | Fixed-point overflow or silent wrap | Model/RTL mismatch and false gain | Bound widths, assert overflow, saturate explicitly | 09/10 |
 | CDC/reset defect appears only on hardware | Intermittent lock/data corruption | Randomized clocks/resets, structural CDC review, sticky faults | Every milestone |
 | Tool/project state is not reproducible | Works only in one GUI project | Tcl-created build, stable outputs, clean-clone reproduction | 01 onward |
-| Benchmark cherry-picking | Unsupported DSP claim | Predeclare matrix, paired conditions, raw counts and CIs | 08/15 |
+| Benchmark cherry-picking | Unsupported DSP claim | Predeclare matrix, paired conditions, raw counts and CIs | 08/14 |
 | Hardware damage or eye hazard | Safety failure | Transistor drive, verified voltage levels, matte beam stop, short enclosed path, no eye-level operation | Before connection |
 | Scope expands into high-speed optics | V1 never closes | Enforce deferred list; use ADR for profile changes | Every review |
 
@@ -691,7 +690,7 @@ Create numbered ADRs under `docs/decisions/` for:
 6. fixed-point widths, rounding, saturation, and FIR architecture;
 7. timing-recovery algorithm and accepted claim boundary;
 8. clock/reset/CDC policy;
-9. UART packet protocol, configuration ownership, and dashboard boundary; and
+9. UART packet protocol, configuration ownership, and host-tool boundary; and
 10. benchmark statistics, impairment method, and evidence retention.
 
 Each ADR records context, decision, alternatives, consequences, and what
@@ -706,7 +705,7 @@ DSP coding before Milestone 08 freezes the measured receiver range.
 
 ## 15. Definition of done
 
-The project is done when Milestone 15 exits, not when a bitstream is generated.
+The project is done when Milestone 14 exits, not when a bitstream is generated.
 The final repository must contain a concise, reproducible chain from
 requirements to evidence:
 

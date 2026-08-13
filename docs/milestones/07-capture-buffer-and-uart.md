@@ -10,7 +10,7 @@ encoder, and reusable Python packet decoder
 You need to see real XADC samples before designing filters. Continuously sending
 250 kSa/s over a basic UART is neither necessary nor reliable. Instead, capture
 a bounded block at full sample rate, freeze it, and transmit it afterward. The
-capture tap remains in the final design for diagnostics and dashboard plots.
+capture tap remains in the final design for diagnostics and offline plots.
 
 ## Permanent components
 
@@ -30,7 +30,7 @@ host/tests/test_protocol.py
 ```
 
 The Python files begin the final host library; do not write a one-off decoder
-that will be discarded before the dashboard.
+that will be discarded before the command and evidence tools are complete.
 
 ## UART TX contract
 
@@ -157,7 +157,7 @@ sample indices must be consecutive and the sample count exact.
 - [ ] Captures contain exact ordered samples and starting index.
 - [ ] Packets survive RTL-to-Python round-trip with verified CRC.
 - [ ] UART reset and back-to-back byte behavior are tested.
-- [ ] The host decoder is structured for reuse by Milestone 14.
+- [ ] The host decoder is structured for reuse by Milestone 13 and final qualification.
 
 ## What this unlocks
 

@@ -37,7 +37,7 @@ For every phase `p` from 0 to 24:
 7. Set the threshold to the midpoint of that phase's means.
 
 Latch the selected phase and threshold when calibration completes. They remain
-stable while framed data is received. The dashboard can request recalibration
+stable while framed data is received. A host command can request recalibration
 later through the control plane.
 
 This training-assisted approach is a permanent design feature, not a throwaway

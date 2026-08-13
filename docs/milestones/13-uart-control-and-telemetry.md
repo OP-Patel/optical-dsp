@@ -4,11 +4,11 @@
 **Depends on:** [Milestone 07](07-capture-buffer-and-uart.md) and
 [Milestone 12](12-frame-sync-and-ber.md)
 **Produces:** A bounded bidirectional protocol, configuration register bank,
-coherent status packets, and host commands
+coherent status packets, headless host commands, and an evidence logger
 
 ## Why this milestone exists
 
-The dashboard should operate a stable instrument, not reach into arbitrary FPGA
+The host tools should operate a stable instrument, not reach into arbitrary FPGA
 state. This milestone defines a small control/status plane over the UART packet
 format already used for captures. It keeps host disconnection or bad input from
 stopping the optical pipeline and makes every benchmark configuration auditable.
@@ -26,7 +26,10 @@ sim/tb/tb_packet_rx.sv
 sim/tb/tb_control_registers.sv
 sim/tb/tb_control_telemetry_loop.sv
 host/optical_dsp_host/commands.py
+host/optical_dsp_host/logger.py
+host/run_cli.py
 host/tests/test_commands.py
+host/tests/test_logger.py
 ```
 
 Reuse the CRC, packet encoder, UART TX, serial transport, and coherent snapshots
@@ -130,14 +133,17 @@ On any error, return to sync search and increment a reason-specific counter.
 
 ## Hardware verification
 
-Build a headless host command utility before the GUI. It should:
+Build a headless host command utility and evidence logger. They should:
 
 - query info/status;
 - set TX mode and rate;
 - trigger calibration and wait for completion;
 - start/stop a BER run;
 - request a capture; and
-- save every command/ACK/status packet with timestamps.
+- save every command/ACK/status packet with timestamps;
+- write a run manifest with Git commit, bitstream/build ID, hardware IDs,
+  settings, and start/stop times; and
+- save status counters and bounded captures in machine-readable files.
 
 Unplug/replug or close/reopen the serial host while the FPGA runs. The optical
 pipeline must continue; reconnection should recover through `GET_INFO` and
@@ -151,6 +157,8 @@ pipeline must continue; reconnection should recover through `GET_INFO` and
 - A hardware command/status transcript decoded by the Python library.
 - Ten-minute telemetry run with no malformed packets or unexplained sequence
   gaps.
+- One complete logged run directory with a manifest, packet/command log,
+  counter data, captures, and final result summary.
 
 ## Done when
 
@@ -159,14 +167,16 @@ pipeline must continue; reconnection should recover through `GET_INFO` and
 - [ ] Host retries are idempotent.
 - [ ] Snapshots are coherent and identify their run/build/configuration.
 - [ ] FPGA measurement continues when the host disconnects.
+- [ ] The headless logger preserves raw counters and enough identity metadata
+  to reproduce a qualification run.
 
 ## Scope guard
 
-Do not build Ethernet, TCP, a soft CPU, a general register bus, or remote firmware
-updates. UART is sufficient for the local dashboard and keeps the learning path
-focused on your signal-processing system.
+Do not build Ethernet, TCP, a soft CPU, a general register bus, remote firmware
+updates, or a graphical frontend. UART plus the headless tools keep the
+learning path focused on the signal-processing system.
 
 ## What this unlocks
 
-Milestone 14 can build the dashboard entirely against a tested host library and
-stable protocol, avoiding GUI-driven FPGA redesign.
+Milestone 14 can run integration and qualification against a tested host
+library, stable protocol, and reproducible evidence logger.

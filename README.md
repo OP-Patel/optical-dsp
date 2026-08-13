@@ -8,7 +8,7 @@ measure the resulting bit-error rate (BER).
 
 The goal is a reproducible proof of concept, not a high-speed or calibrated
 optical instrument. It is also explicitly a learning project: the owner will
-hand-write and explain the RTL, testbenches, host tools, and dashboard. The
+hand-write and explain the RTL, testbenches, and host tools. The
 repository documentation supplies small interface contracts, design context,
 hints, and verification targets rather than completed project logic.
 
@@ -20,9 +20,9 @@ no optical-link or DSP RTL has been implemented.
 - [Implementation-ready project plan](docs/project-plan.md) — scope, hardware,
   wiring gates, milestones, verification, benchmarks, risks, and repository
   organization.
-- [15-step learning path](docs/milestones/README.md) — one permanent,
+- [14-step learning path](docs/milestones/README.md) — one permanent,
   independently testable addition every one or two workdays, ending with the
-  qualified link and local dashboard.
+  qualified link and reproducible headless evidence.
 - [Terminal Vivado workflow](scripts/README.md) — batch build/program commands
   that do not require opening the Vivado IDE.
 
@@ -72,7 +72,7 @@ and meaningful DSP comparisons.
 | Stretch rate | 25 kbit/s at 10 samples/symbol, only if measured hardware bandwidth supports it |
 | Receiver DSP | DC removal, fixed-point FIR, discrete sample-phase selection, threshold decision |
 | Measurement | FPGA-resident PRBS synchronization, BER, lock, saturation, and rate counters |
-| Host link | USB-UART packet protocol to a local Python logger/dashboard |
+| Host link | USB-UART packet protocol to a local Python command utility and logger |
 
 Rates are test profiles, not claims about the inexpensive modules. A profile is
 accepted only after the measured optical waveform, XADC headroom, sample
@@ -96,7 +96,7 @@ integrity, and BER run meet the project-plan criteria.
 The detailed implementation order is the
 [milestone index](docs/milestones/README.md). It continues from hardware
 bring-up through DC removal, FIR filtering, phase/threshold selection, frame
-synchronization, BER, UART control, the dashboard, and final qualification.
+synchronization, BER, UART control, headless logging, and final qualification.
 
 ## Safety and electrical rules
 
@@ -140,7 +140,7 @@ selection and part verification to a batch Tcl script. See
 - [x] Scope and evidence policy established.
 - [x] Student-scale hardware baseline selected: DAOKI kit, BPW34-style detector,
   and the Arty A7 XADC.
-- [x] Fifteen cumulative learning milestones defined with verification gates.
+- [x] Fourteen cumulative learning milestones defined with verification gates.
 - [x] Terminal-only FPGA programming wrapper prepared.
 - [ ] Delivered hardware inspected and electrically characterized.
 - [ ] Final wiring and measured rate profiles frozen.

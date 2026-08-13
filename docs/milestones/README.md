@@ -43,7 +43,7 @@ flowchart LR
     TAP --> UART["UART protocol"]
     STATUS --> UART
     UART --> HOST["Python host library"]
-    HOST --> GUI["Local dashboard"]
+    HOST --> LOG["Headless command utility + evidence logger"]
 ```
 
 The DAOKI digital receiver is a diagnostic branch used in Milestone 05. It
@@ -107,8 +107,7 @@ its rounding, saturation, and reset behavior.
 | 11 | [Sample phase and threshold decision](11-phase-and-threshold.md) | Training-assisted symbol decisions | 2 days |
 | 12 | [Frame synchronization and BER engine](12-frame-sync-and-ber.md) | Hardware lock and error measurement | 2 days |
 | 13 | [UART control and telemetry plane](13-uart-control-and-telemetry.md) | Stable hardware/host command protocol | 2 days |
-| 14 | [Local dashboard and internal tools](14-dashboard-and-host-tools.md) | Headless logger plus user-facing GUI | 2 days |
-| 15 | [Integration, qualification, and demo](15-integration-and-qualification.md) | Reproducible final project and evidence | 2 days |
+| 14 | [Integration, qualification, and demo](14-integration-and-qualification.md) | Reproducible final project and evidence | 2 days |
 
 ## Definition of “hand-coded” for this project
 
@@ -119,7 +118,7 @@ its rounding, saturation, and reset behavior.
 - Standard Python libraries and small dependencies such as `pyserial` and
   `matplotlib` are acceptable. Your protocol, state management, plots, controls,
   and evidence logic remain yours.
-- Do not import a PRBS, framer, UART, FIR, BER, or full dashboard implementation.
+- Do not import a PRBS, framer, UART, FIR, BER, or full host-control implementation.
   Those are the learning targets.
 - Testbench helper tasks are encouraged. Copying the RTL algorithm verbatim into
   the testbench is not an independent check.

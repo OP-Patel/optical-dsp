@@ -34,7 +34,7 @@ Start with a small, explainable coefficient bank:
 
 Use 8 taps first if it makes hand verification easier; keep `TAPS` parameterized
 and qualify a 16-tap configuration before final completion. Runtime arbitrary
-coefficient writes are not required. A dashboard-selected compile-time bank is
+coefficient writes are not required. A host-selected compile-time bank is
 sufficient for V1.
 
 ## Permanent modules to write
