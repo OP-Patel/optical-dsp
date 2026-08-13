@@ -30,7 +30,7 @@ when its automated checks and listed evidence exist.
 flowchart LR
     TIMING["Reset + clock enables"] --> PRBS["PRBS-15 source"]
     PRBS --> FRAME["Training/framed TX"]
-    FRAME --> LASER["Transistor + DAOKI laser"]
+    FRAME --> LASER["Guarded GPIO + DAOKI laser control input"]
     LASER --> OPTICAL["Short enclosed channel"]
     OPTICAL --> BPW["BPW34 + load resistor"]
     BPW --> XADC["Arty XADC acquisition"]
@@ -61,7 +61,7 @@ milestones and test vectors depend on them.
 | RTL language | SystemVerilog for synthesizable logic and testbenches |
 | Reset | Synchronous, active-high internal reset; external reset is synchronized once |
 | Clocking style | One main FPGA clock with one-cycle clock-enable pulses; no fabric-generated clocks |
-| Laser polarity | Logical `1` means commanded laser-on after the transistor driver |
+| Laser polarity | Logical `1` means commanded laser-on at the guarded KY-008 control input |
 | XADC stream | Unsigned 12-bit sample plus one-cycle `sample_valid` and monotonic sample index |
 | Qualification sampling | 250 kSa/s |
 | Symbol profiles | 1 kbit/s bring-up, 10 kbit/s qualification, 25 kbit/s optional stretch |

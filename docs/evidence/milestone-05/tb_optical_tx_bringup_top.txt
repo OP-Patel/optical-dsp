@@ -1,0 +1,31 @@
+#-----------------------------------------------------------
+# xsim v2026.1 (64-bit)
+# SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+# IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+# SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+# Start of session at: Wed Aug 12 23:03:12 2026
+# Process ID         : 34252
+# Current directory  : C:/Users/Om Patel/Desktop/arty-optical-dsp
+# Command line       : xsim.exe -log docs/evidence/milestone-05/tb_optical_tx_bringup_top.txt -mode tcl -source {xsim.dir/tb_optical_tx_bringup_top_m05/xsim_script.tcl}
+# Log file           : C:/Users/Om Patel/Desktop/arty-optical-dsp/docs/evidence/milestone-05/tb_optical_tx_bringup_top.txt
+# Journal file       : C:/Users/Om Patel/Desktop/arty-optical-dsp\xsim.jou
+# Running On         : Om
+# Platform           : Windows 11
+# Operating System   : 26200
+# Processor Detail   : Intel(R) Core(TM) Ultra 9 185H
+# CPU Frequency      : 3072 MHz
+# CPU Physical cores : 16
+# CPU Logical cores  : 22
+# Host memory        : 33945 MB
+# Swap memory        : 8053 MB
+# Total Virtual      : 41998 MB
+# Available Virtual  : 15717 MB
+#-----------------------------------------------------------
+source xsim.dir/tb_optical_tx_bringup_top_m05/xsim_script.tcl
+# xsim {tb_optical_tx_bringup_top_m05} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+PASS: tb_optical_tx_bringup_top checks=233 divisor=4
+$finish called at time : 5118 ns : File "C:/Users/Om Patel/Desktop/arty-optical-dsp/rtl/tb/tb_optical_tx_bringup_top.sv" Line 205
+exit
+INFO: [Common 17-206] Exiting xsim at Wed Aug 12 23:03:14 2026...

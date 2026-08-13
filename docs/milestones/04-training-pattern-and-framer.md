@@ -133,5 +133,5 @@ verified PRBS golden vector. Do not simply inspect a waveform.
 
 ## What this unlocks
 
-Milestone 05 can connect a stable logical transmit stream to the permanent
-transistor-controlled laser output and use the training modes for safe bring-up.
+Milestone 05 can connect a stable logical transmit stream to the guarded KY-008
+control input and use the training modes for safe bring-up.

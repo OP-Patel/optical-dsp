@@ -11,6 +11,7 @@ create_clock -add -name sys_clk \
 set_property -dict {PACKAGE_PIN D9 IOSTANDARD LVCMOS33} \
     [get_ports reset_btn]
 
-# LD4: first standard single-color LED
-set_property -dict {PACKAGE_PIN H5 IOSTANDARD LVCMOS33} \
-    [get_ports heartbeat_led]
+# Top-specific pins are kept in separate XDC files so every constraint names a
+# port that actually exists on the selected top module:
+#   foundation_top.xdc
+#   optical_tx_bringup_top.xdc

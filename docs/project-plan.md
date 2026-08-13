@@ -42,8 +42,8 @@ V1 is complete only when the physical system can, continuously and without
 host assistance:
 
 1. generate a framed PRBS test stream in FPGA fabric;
-2. control the DAOKI optical transmitter through a transistor switch without
-   sourcing laser current from an FPGA pin;
+2. control the DAOKI optical transmitter through its verified `S` logic input
+   without sourcing laser power from an FPGA pin;
 3. receive and condition the optical signal with the BPW34-style detector and
    a characterized, voltage-bounded front end;
 4. acquire every scheduled XADC sample without loss or discontinuity;
@@ -107,7 +107,7 @@ result, not completion.
 flowchart LR
     SYS["100 MHz board clock"] --> TXCE["Integer symbol clock enable"]
     TXCE --> FRAME["Framer + PRBS generator"]
-    FRAME --> TXIO["GPIO + transistor laser switch"]
+    FRAME --> TXIO["Guarded GPIO + KY-008 S input"]
     TXIO --> TXLASER["DAOKI 650 nm transmitter"]
     TXLASER --> OPT["Enclosed short optical channel"]
     OPT -. alignment bring-up .-> DIGRX["DAOKI digital receiver"]
@@ -304,31 +304,31 @@ The parts serve different purposes:
 | Digital bring-up | DAOKI TX + DAOKI digital receiver | Alignment, beam block/unblock, polarity, and very-low-rate OOK experiments | Analog waveform quality, XADC performance, or DSP benefit |
 | Analog qualification | DAOKI TX + BPW34-style detector + measured front end + XADC | Sample capture, filtering, timing/threshold experiments, and BER | Calibrated optical power or datasheet-level receiver performance |
 
-No FPGA pin directly powers the laser. A transistor switch is mandatory for
-FPGA-controlled modulation. A 5 V DAOKI receiver output is also never connected
-directly to a 3.3 V FPGA input; its actual level is measured and translated.
+No FPGA pin directly powers the laser. The module is powered from the Arty 3.3 V
+and ground pins, while the guarded GPIO drives only the KY-008 `S` control
+input. Before connection, measure `S` voltage and input current to confirm that
+it is a 3.3 V-compatible logic input within the FPGA pin limit. A 5 V DAOKI
+receiver output is also never connected directly to a 3.3 V FPGA input; its
+actual level is measured and translated.
 
 ### 5.4 Provisional wiring to validate
 
 The following circuits are bring-up hypotheses, not permission to skip the
 pre-connection measurements.
 
-**Transmitter, using an available 2N7000:**
+**KY-008 transmitter control:**
 
 ```text
-5 V -------------------- DAOKI laser supply/input
-DAOKI laser return ----- 2N7000 drain
-Arty GND ---------------- 2N7000 source
-Arty GPIO -- 220 Ω ------ 2N7000 gate
-                         |
-                       100 kΩ
-                         |
-Arty GND ----------------+
+Arty 3.3 V ------------- KY-008 VCC
+Arty GND --------------- KY-008 GND
+Guarded Arty GPIO ------ KY-008 S
 ```
 
-DAOKI/KY-008 pin labels vary between sellers. The actual supply, return, and
-unused pin are identified from the received board before wiring. A 2N2222A
-low-side circuit with a calculated base resistor is an acceptable substitute.
+DAOKI/KY-008 pin labels vary between sellers. Identify VCC, GND, and `S` from
+the received board before wiring. With the module powered normally, measure the
+current into `S` at logic high and confirm the GPIO does not carry the laser's
+supply current. If that condition is not met, direct drive is rejected and an
+external switch or buffer must be reconsidered.
 
 **Passive BPW34/XADC receiver:**
 
@@ -362,11 +362,12 @@ Terms such as “low light” without an indexed condition are not evidence.
 
 ### 5.5 Pre-connection checklist
 
-- [ ] Exact Arty revision, DAOKI modules, BPW34-style devices, and switching
-  transistor photographed and assigned local hardware IDs.
+- [ ] Exact Arty revision, DAOKI modules, and BPW34-style devices photographed
+  and assigned local hardware IDs.
 - [ ] Delivered module pinouts checked; seller photos are not treated as wiring
   documentation.
-- [ ] Laser current is supplied through a transistor switch, never an FPGA pin.
+- [ ] KY-008 power is supplied through VCC/GND, never through the FPGA GPIO;
+  `S` voltage and input current are measured safe before connection.
 - [ ] DAOKI receiver output measured and limited to a safe 3.3 V FPGA input.
 - [ ] BPW34 sense node measured under dark, nominal, blocked, misaligned, and
   maximum-light conditions and remains within 0-3.3 V.
@@ -475,7 +476,7 @@ checks, completion evidence, common traps, and an explicit scope guard.
 | 02 | Reset synchronizer, clock enables, heartbeat | [Reset and clock enables](milestones/02-reset-and-clock-enables.md) |
 | 03 | PRBS-15 source/checker and golden convention | [PRBS-15 source and checker](milestones/03-prbs15-source-and-checker.md) |
 | 04 | OFF/ON/training/framed optical bit source | [Training pattern and framer](milestones/04-training-pattern-and-framer.md) |
-| 05 | Safe transistor-driven laser and DAOKI diagnostic | [Laser and DAOKI bring-up](milestones/05-laser-and-daoki-bringup.md) |
+| 05 | Guarded KY-008 control and DAOKI diagnostic | [Laser and DAOKI bring-up](milestones/05-laser-and-daoki-bringup.md) |
 | 06 | Single-channel XADC sample stream | [XADC acquisition](milestones/06-xadc-acquisition.md) |
 | 07 | Bounded capture, UART TX, packet encoder, host decoder | [Capture buffer and UART](milestones/07-capture-buffer-and-uart.md) |
 | 08 | Frozen BPW34 device/load/geometry | [BPW34 analog link](milestones/08-bpw34-analog-link.md) |
@@ -674,7 +675,7 @@ does not clear root-cause counters unless explicitly requested.
 | CDC/reset defect appears only on hardware | Intermittent lock/data corruption | Randomized clocks/resets, structural CDC review, sticky faults | Every milestone |
 | Tool/project state is not reproducible | Works only in one GUI project | Tcl-created build, stable outputs, clean-clone reproduction | 01 onward |
 | Benchmark cherry-picking | Unsupported DSP claim | Predeclare matrix, paired conditions, raw counts and CIs | 08/14 |
-| Hardware damage or eye hazard | Safety failure | Transistor drive, verified voltage levels, matte beam stop, short enclosed path, no eye-level operation | Before connection |
+| Hardware damage or eye hazard | Safety failure | Verified control-input current/voltage, matte beam stop, short enclosed path, no eye-level operation | Before connection |
 | Scope expands into high-speed optics | V1 never closes | Enforce deferred list; use ADR for profile changes | Every review |
 
 ## 13. Architecture decisions to record before RTL
@@ -683,8 +684,8 @@ Create numbered ADRs under `docs/decisions/` for:
 
 1. exact FPGA board/part/revision and Vivado version;
 2. onboard XADC channel/settings and external-voltage interface;
-3. DAOKI transmitter/digital receiver, BPW34 front end, transistor driver, and
-   safe enclosure;
+3. DAOKI transmitter/digital receiver, verified KY-008 control input, BPW34
+   front end, and safe enclosure;
 4. sample/symbol rates and clock derivation;
 5. frame format and PRBS definitions;
 6. fixed-point widths, rounding, saturation, and FIR architecture;

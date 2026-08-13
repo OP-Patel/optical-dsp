@@ -49,7 +49,7 @@ no optical-link or DSP RTL has been implemented.
 | First receiver | DAOKI non-modulated digital laser receiver module | Alignment, beam interruption, and very-low-rate digital bring-up only. Its comparator output is not an analog waveform and cannot demonstrate receive DSP. |
 | DSP receiver | Amazon five-pack of through-hole BPW34/BPW34S-style silicon PIN photodiodes | Analog light detector for the XADC path. The seller is not Vishay, so the devices are treated as unverified BPW34-compatible parts and characterized before benchmarking. |
 | Initial analog front end | BPW34-style detector, 3.3 V reverse bias, and 10 kΩ load resistor | Cheapest first experiment. Resistor values may be swept after measuring signal swing and bandwidth; a transimpedance amplifier is an optional later upgrade. |
-| TX switch | Existing small transistor, preferably a 2N7000 or 2N2222A with the appropriate gate/base resistors | Keeps laser current out of the FPGA pin. The Arty GPIO controls the switch; it must not directly power the laser module. |
+| Laser control | KY-008 `S` control input driven by an Arty LVCMOS33 GPIO | The module is powered from Arty 3.3 V/GND; direct control is accepted only after measuring that `S` is a logic input and its current is within the FPGA pin limit. |
 
 Selected purchase listings:
 
@@ -84,8 +84,8 @@ integrity, and BER run meet the project-plan criteria.
    pinout before applying power.
 2. Run one DAOKI transmitter continuously and use a DAOKI digital receiver to
    establish safe alignment and beam-block detection.
-3. Add a transistor switch and prove slow FPGA-controlled OOK without sourcing
-   laser current from an FPGA pin.
+3. Measure the KY-008 `S` input, then prove slow FPGA-controlled OOK through
+   that control input without sourcing laser power from the GPIO.
 4. Characterize all supplied BPW34-style devices with a 10 kΩ load, then verify
    the sense node stays within 0-3.3 V before connecting it to Arty A0.
 5. Capture dark, laser-off, laser-on, transition, and deliberately misaligned
@@ -104,7 +104,8 @@ synchronization, BER, UART control, headless logging, and final qualification.
   it at eye level. Use a matte beam stop and enclose the short optical path.
 - Treat the inexpensive module as an unverified visible-laser product even if
   the listing claims 5 mW. Do not rely on the listing for a safety class.
-- The FPGA GPIO controls a transistor; it does not supply laser current.
+- The FPGA GPIO drives only the verified KY-008 `S` control input; module power
+  comes from the 3.3 V supply pin, not the GPIO.
 - A 5 V digital-receiver output must not connect directly to a 3.3 V FPGA pin.
   Verify its high level and use a divider or level shifter when required.
 - Only A0-A5 are assumed to accept 0-3.3 V analog signals through the Arty

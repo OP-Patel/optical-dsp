@@ -9,3 +9,7 @@
 | Cathode | VCC3V3 - JA12 | Power BPW34 (less than 60V max) |
 | Anode | GND - JA11 | Ground Pin | 
 | --- | --- |
+| DAOKI digital receiver diagnostic |
+| OUT | JA1 | Connect only after measuring or translating HIGH to <= 3.3 V |
+| Diagnostic LED | LD6 | Driven internally from the synchronized JA1 input |
+| --- | --- |

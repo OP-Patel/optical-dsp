@@ -17,7 +17,7 @@ interfaces and tests already built, so it should not become a redesign cycle.
 
 ```text
 reset/timing
-  -> PRBS/framer -> output guard -> transistor/DAOKI laser
+  -> PRBS/framer -> output guard -> KY-008 control input
   -> XADC -> capture tap -> DC removal -> FIR
   -> phase/threshold -> frame sync -> PRBS checker/BER counters
   -> snapshot/control/telemetry -> UART -> host command/logger tools
@@ -130,7 +130,7 @@ can explain.
 Be prepared to explain, in your own words:
 
 - why OOK and oversampling were chosen;
-- how the transistor protects FPGA I/O;
+- why the KY-008 control input had to be measured before direct GPIO drive;
 - why DAOKI digital RX and BPW34 analog RX have different roles;
 - how XADC raw code becomes a signed DSP sample;
 - fixed-point widths, rounding, saturation, and FIR coefficient effects;

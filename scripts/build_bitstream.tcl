@@ -23,7 +23,9 @@ set rtl_sources [list \
 # that list explicitly preserves repository paths containing spaces.
 read_verilog -sv $rtl_sources
 
-read_xdc [list [file join $constraints_dir arty_a7_100t_base.xdc]]
+read_xdc [list \
+    [file join $constraints_dir arty_a7_100t_base.xdc] \
+    [file join $constraints_dir foundation_top.xdc]]
 
 synth_design \
     -top foundation_top \

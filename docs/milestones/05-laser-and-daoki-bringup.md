@@ -11,7 +11,7 @@ digital diagnostic path
 This is the first physical optical milestone, but it deliberately avoids analog
 DSP. The DAOKI digital receiver answers a narrow question: does the safely
 switched laser reach the receiver and follow slow commands? Solving power,
-polarity, alignment, and level translation here prevents those problems from
+polarity, alignment, control-input loading, and level translation here prevents those problems from
 being misdiagnosed as XADC or DSP bugs later.
 
 ## Safety gate
@@ -19,8 +19,9 @@ being misdiagnosed as XADC or DSP bugs later.
 Do not energize the module until all are true:
 
 - the received module pinout has been identified from markings and measurement;
-- the laser current path does not pass through an FPGA I/O pin;
-- the transistor is wired as a low-side switch with a defined off-state;
+- KY-008 module power is connected through VCC/GND, not through an FPGA I/O;
+- the KY-008 `S` input voltage and high-level input current have been measured
+  and accepted for direct 3.3 V GPIO drive;
 - Arty and external supply grounds are intentionally common;
 - the optical path ends in a matte stop and is not at eye level; and
 - no person can enter the beam path during testing.
@@ -29,11 +30,12 @@ Treat the marketplace “5 mW” value and safety class as unverified.
 
 ## Permanent hardware arrangement
 
-Validate the provisional wiring from the main plan. For a 2N7000 path, the
-FPGA drives the gate through a small series resistor and a pull-down holds it
-off during configuration. The laser module receives current from its intended
-supply, not the GPIO. If you use a 2N2222A instead, calculate and record the base
-resistor and confirm saturation at the measured module current.
+Validate the provisional wiring from the main plan. Power the KY-008 from the
+Arty 3.3 V and ground pins. Drive only its `S` control input from the guarded
+GPIO. Before making that connection, measure the `S` high voltage and input
+current with the module powered normally. Direct drive is acceptable only if
+`S` behaves as a 3.3 V-compatible logic input and the GPIO is not carrying the
+laser supply current.
 
 The FPGA output must default low before and during configuration. Record the
 laser module's measured off current, on current, and supply voltage.
@@ -55,12 +57,14 @@ Suggested inputs:
 |---|---|
 | `tx_bit` | Requested optical bit from the framer |
 | `tx_enable` | Software/hardware permission to emit |
-| `fault` | Sticky electrical/logical fault forcing off |
+| `fault` | Live indication that `tx_bit` requested ON while disabled |
 | `rst` | Forces safe state |
-| `laser_drive` | Only signal routed to the transistor gate path |
+| `laser_drive` | Only signal routed to the KY-008 `S` input |
 
-Define a truth table before coding. Reset, disabled, or faulted must always
-produce laser-off regardless of `tx_bit`.
+Define a truth table before coding. Reset or disable must always produce
+laser-off regardless of `tx_bit`. In the baseline combinational guard, `fault`
+is a live diagnostic output, not stored sticky state. A sticky fault would
+require a flip-flop plus a defined clear/reset policy.
 
 ## DAOKI receiver diagnostic
 
@@ -75,8 +79,9 @@ but it is never used to claim analog DSP performance.
 
 ## SystemVerilog guidance
 
-- Safety interlocks should be simple combinational logic followed by an output
-  register if needed for clean timing. Be explicit about reset behavior.
+- Keep the baseline guard combinational: `laser_drive` is true only when reset
+  is inactive, transmission is enabled, and `tx_bit` is true. The module does
+  not need a clock.
 - Do not invert the laser polarity in multiple modules. `tx_bit=1` means logical
   on; perform any physical inversion in exactly one documented wrapper.
 - Synchronize the DAOKI receiver input before using it in sequential logic
@@ -90,9 +95,11 @@ but it is never used to claim analog DSP performance.
 
 ### Output guard
 
-Exhaustively test every combination of reset, enable, fault, and requested bit.
-Assert that no forbidden combination produces `laser_drive=1`. Also change
-inputs near symbol events and confirm your registered/combinational policy.
+Exhaustively test every combination of reset, enable, and requested bit. Assert
+that no forbidden combination produces `laser_drive=1`, and that `fault` is
+true only for an ON request while reset is inactive and transmission is
+disabled. Change inputs between clock events to prove the declared
+combinational policy does not depend on a clock.
 
 ### Input synchronizer
 
@@ -125,8 +132,9 @@ metastability safety, so also explain the structural reason for two stages.
 
 ## Done when
 
-- [ ] Reset, disable, or fault forces the transistor command off.
-- [ ] FPGA current does not power the laser module.
+- [ ] Reset or disable forces the KY-008 control command off.
+- [ ] FPGA GPIO drives only the measured-safe `S` input and does not power the
+  laser module.
 - [ ] The receiver signal presented to the FPGA is within 3.3 V limits.
 - [ ] OFF, ON, TRAINING, and FRAMED modes work at the safe bring-up rate.
 - [ ] Wiring, polarity, currents, voltages, and limitations are recorded.
