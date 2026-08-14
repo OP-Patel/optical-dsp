@@ -26,6 +26,14 @@ wrapper invokes Vivado in batch mode; the Vivado IDE is not required.
 # Available after the first design adds scripts/build_bitstream.tcl.
 .\scripts\fpga.cmd build
 .\scripts\fpga.cmd build-program
+
+# Build the Milestone 06 XADC bring-up image.
+.\scripts\fpga.cmd build `
+  -BuildScript scripts\build_xadc_bringup.tcl
+
+# Program the already-built Milestone 06 image.
+.\scripts\fpga.cmd program `
+  -Bitstream artifacts\bitstreams\xadc_bringup_top.bit
 ```
 
 `build-program` completes the batch build first and contacts hardware only if
