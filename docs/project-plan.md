@@ -42,8 +42,8 @@ V1 is complete only when the physical system can, continuously and without
 host assistance:
 
 1. generate a framed PRBS test stream in FPGA fabric;
-2. control the DAOKI optical transmitter through its verified `S` logic input
-   without sourcing laser power from an FPGA pin;
+2. control the delivered two-wire KY-008 variant through its `S` supply/control
+   pin after verifying loaded GPIO voltage and current;
 3. receive and condition the optical signal with the BPW34-style detector and
    a characterized, voltage-bounded front end;
 4. acquire every scheduled XADC sample without loss or discontinuity;
@@ -304,10 +304,10 @@ The parts serve different purposes:
 | Digital bring-up | DAOKI TX + DAOKI digital receiver | Alignment, beam block/unblock, polarity, and very-low-rate OOK experiments | Analog waveform quality, XADC performance, or DSP benefit |
 | Analog qualification | DAOKI TX + BPW34-style detector + measured front end + XADC | Sample capture, filtering, timing/threshold experiments, and BER | Calibrated optical power or datasheet-level receiver performance |
 
-No FPGA pin directly powers the laser. The module is powered from the Arty 3.3 V
-and ground pins, while the guarded GPIO drives only the KY-008 `S` control
-input. Before connection, measure `S` voltage and input current to confirm that
-it is a 3.3 V-compatible logic input within the FPGA pin limit. A 5 V DAOKI
+The delivered KY-008 variant uses `S` as its positive supply/control, `-` as
+ground, and leaves the middle pin unused. Functional direct GPIO drive has been
+observed, but acceptance still requires the loaded `S` voltage and GPIO current
+to be measured against the selected FPGA drive setting. A 5 V DAOKI
 receiver output is also never connected directly to a 3.3 V FPGA input; its
 actual level is measured and translated.
 
@@ -319,15 +319,15 @@ pre-connection measurements.
 **KY-008 transmitter control:**
 
 ```text
-Arty 3.3 V ------------- KY-008 VCC
-Arty GND --------------- KY-008 GND
-Guarded Arty GPIO ------ KY-008 S
+Guarded Arty GPIO/JA4 --- KY-008 S
+Arty GND/JA5 ----------- KY-008 -
+JA6 -------------------- not connected
 ```
 
-DAOKI/KY-008 pin labels vary between sellers. Identify VCC, GND, and `S` from
-the received board before wiring. With the module powered normally, measure the
-current into `S` at logic high and confirm the GPIO does not carry the laser's
-supply current. If that condition is not met, direct drive is rejected and an
+DAOKI/KY-008 pin functions vary between sellers. This delivered module has been
+functionally verified with `S` positive, `-` ground, and the middle pin unused.
+Measure current into `S` and its loaded-high voltage. If either falls outside
+the FPGA/output-drive acceptance limit, direct drive is rejected and an
 external switch or buffer must be reconsidered.
 
 **Passive BPW34/XADC receiver:**
@@ -366,8 +366,8 @@ Terms such as “low light” without an indexed condition are not evidence.
   and assigned local hardware IDs.
 - [ ] Delivered module pinouts checked; seller photos are not treated as wiring
   documentation.
-- [ ] KY-008 power is supplied through VCC/GND, never through the FPGA GPIO;
-  `S` voltage and input current are measured safe before connection.
+- [ ] KY-008 `S` loaded-high voltage and GPIO current are measured and accepted;
+  the delivered module's middle pin remains disconnected.
 - [ ] DAOKI receiver output measured and limited to a safe 3.3 V FPGA input.
 - [ ] BPW34 sense node measured under dark, nominal, blocked, misaligned, and
   maximum-light conditions and remains within 0-3.3 V.

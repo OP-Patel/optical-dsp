@@ -23,7 +23,7 @@ logic tx_enable_sync;
 logic [1:0] mode_meta;
 logic [1:0] mode_sync;
 
-always_ff @(posedge clk_100mhz) begin
+always_ff @(posedge clk_100mhz) begin // synchronizing tx_enable and mode to clk_100mhz domain
     if (rst) begin
         tx_enable_meta <= 1'b0;
         tx_enable_sync <= 1'b0;

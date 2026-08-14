@@ -76,7 +76,7 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\fpga.ps1 `
 ## Hardware verification still required
 
 - [ ] Record annotated wiring photos and module IDs.
-- [ ] Measure KY-008 `S` voltage/current before GPIO connection.
+- [ ] Record the already-working KY-008's loaded `S` voltage and GPIO current.
 - [ ] Measure module OFF/ON supply current and voltage.
 - [ ] Verify reset, SW0 disable, and mode `00` produce a low JA4 output.
 - [ ] Verify OFF, ON, TRAINING, and FRAMED optically at 1 kbit/s.

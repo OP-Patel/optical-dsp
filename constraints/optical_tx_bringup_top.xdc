@@ -38,8 +38,8 @@ set_property -dict {PACKAGE_PIN J5 IOSTANDARD LVCMOS33} \
 #
 # Digilent's master XDC calls physical JA4 "ja[3]" because its vectors are
 # zero-based. On the Arty A7-100 Rev. D/E, physical JA4 maps to FPGA pin D12.
-# JA5 is GND and JA6 is 3.3 V. They are fixed power pins, not FPGA signals, so
-# they do not receive XDC constraints.
+# JA5 supplies ground. JA6 is unused for the confirmed KY-008 variant because
+# its middle module pin is not connected. Power/control enters through S/JA4.
 set_property -dict {PACKAGE_PIN D12 IOSTANDARD LVCMOS33 DRIVE 4 SLEW SLOW} \
     [get_ports laser_drive]
 

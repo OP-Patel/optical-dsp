@@ -19,9 +19,10 @@ being misdiagnosed as XADC or DSP bugs later.
 Do not energize the module until all are true:
 
 - the received module pinout has been identified from markings and measurement;
-- KY-008 module power is connected through VCC/GND, not through an FPGA I/O;
-- the KY-008 `S` input voltage and high-level input current have been measured
-  and accepted for direct 3.3 V GPIO drive;
+- the delivered KY-008 pinout is confirmed as `S` positive/control, `-` ground,
+  and middle pin unused;
+- the KY-008 loaded `S` voltage and high-level GPIO current have been measured
+  and accepted for direct drive;
 - Arty and external supply grounds are intentionally common;
 - the optical path ends in a matte stop and is not at eye level; and
 - no person can enter the beam path during testing.
@@ -30,12 +31,11 @@ Treat the marketplace “5 mW” value and safety class as unverified.
 
 ## Permanent hardware arrangement
 
-Validate the provisional wiring from the main plan. Power the KY-008 from the
-Arty 3.3 V and ground pins. Drive only its `S` control input from the guarded
-GPIO. Before making that connection, measure the `S` high voltage and input
-current with the module powered normally. Direct drive is acceptable only if
-`S` behaves as a 3.3 V-compatible logic input and the GPIO is not carrying the
-laser supply current.
+Validate the provisional wiring from the main plan. For this delivered variant,
+connect `S` to guarded JA4 and `-` to JA5 ground; leave the middle pin
+disconnected. Functional operation alone is not the electrical acceptance
+criterion: record the loaded JA4/S high voltage and GPIO current and compare
+them with the selected output-drive limit.
 
 The FPGA output must default low before and during configuration. Record the
 laser module's measured off current, on current, and supply voltage.
@@ -133,8 +133,8 @@ metastability safety, so also explain the structural reason for two stages.
 ## Done when
 
 - [ ] Reset or disable forces the KY-008 control command off.
-- [ ] FPGA GPIO drives only the measured-safe `S` input and does not power the
-  laser module.
+- [ ] Direct GPIO drive through `S` has measured-safe loaded voltage and current;
+  the middle pin remains disconnected.
 - [ ] The receiver signal presented to the FPGA is within 3.3 V limits.
 - [ ] OFF, ON, TRAINING, and FRAMED modes work at the safe bring-up rate.
 - [ ] Wiring, polarity, currents, voltages, and limitations are recorded.

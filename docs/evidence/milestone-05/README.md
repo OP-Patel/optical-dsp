@@ -46,9 +46,9 @@ Generated reports:
 Do not connect the DAOKI receiver output to JA1 until its high voltage has been
 measured or safely translated to no more than 3.3 V.
 
-- Measure KY-008 `S` input voltage/current and prove the GPIO is not supplying
-  laser power.
-- Photograph and verify VCC/GND/S markings before connection.
+- Measure the working KY-008's loaded `S` voltage/current against the FPGA
+  output-drive limit.
+- Photograph and verify `S`, unused middle, and `-` markings.
 - Program the prepared bitstream only with SW0 low and mode `00`.
 - Verify JA4 low during reset, disable, and OFF before attaching the KY-008.
 - Record OFF/ON current and voltage, then test TRAINING and FRAMED at 1 kbit/s.

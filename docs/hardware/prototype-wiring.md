@@ -1,15 +1,11 @@
 | External Pin | Arty A7 Pin | Use Case |
 | --- | --- |
 | KY-008 |
-| VCC PIN2 | VCC3V3 - JA6 | Power the KY-008 Laser Module | 
+| Middle PIN2 | Not connected | Confirmed unused on this delivered variant |
 | GND PIN3 (-) | GND - JA5  | Ground Pin | 
-| SIG PIN1 (S) | JA4 | Signal for Laser (HIGH == ON) | 
+| SIG PIN1 (S) | JA4 | Positive supply/control (HIGH == ON); loaded voltage/current measurement pending |
 | --- | --- |
 | BPW34 |
 | Cathode | VCC3V3 - JA12 | Power BPW34 (less than 60V max) |
 | Anode | GND - JA11 | Ground Pin | 
-| --- | --- |
-| DAOKI digital receiver diagnostic |
-| OUT | JA1 | Connect only after measuring or translating HIGH to <= 3.3 V |
-| Diagnostic LED | LD6 | Driven internally from the synchronized JA1 input |
 | --- | --- |

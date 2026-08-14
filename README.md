@@ -49,7 +49,7 @@ no optical-link or DSP RTL has been implemented.
 | First receiver | DAOKI non-modulated digital laser receiver module | Alignment, beam interruption, and very-low-rate digital bring-up only. Its comparator output is not an analog waveform and cannot demonstrate receive DSP. |
 | DSP receiver | Amazon five-pack of through-hole BPW34/BPW34S-style silicon PIN photodiodes | Analog light detector for the XADC path. The seller is not Vishay, so the devices are treated as unverified BPW34-compatible parts and characterized before benchmarking. |
 | Initial analog front end | BPW34-style detector, 3.3 V reverse bias, and 10 kΩ load resistor | Cheapest first experiment. Resistor values may be swept after measuring signal swing and bandwidth; a transimpedance amplifier is an optional later upgrade. |
-| Laser control | KY-008 `S` control input driven by an Arty LVCMOS33 GPIO | The module is powered from Arty 3.3 V/GND; direct control is accepted only after measuring that `S` is a logic input and its current is within the FPGA pin limit. |
+| Laser control | KY-008 `S` supply/control pin driven by an Arty LVCMOS33 GPIO | This delivered variant uses `S` and ground while its middle pin is unused. Functional direct drive is confirmed; loaded voltage and GPIO current still require measurement. |
 
 Selected purchase listings:
 
@@ -104,8 +104,8 @@ synchronization, BER, UART control, headless logging, and final qualification.
   it at eye level. Use a matte beam stop and enclose the short optical path.
 - Treat the inexpensive module as an unverified visible-laser product even if
   the listing claims 5 mW. Do not rely on the listing for a safety class.
-- The FPGA GPIO drives only the verified KY-008 `S` control input; module power
-  comes from the 3.3 V supply pin, not the GPIO.
+- This KY-008 variant takes power/control through `S`; the middle pin is unused.
+  Record loaded GPIO voltage and current before accepting direct drive formally.
 - A 5 V digital-receiver output must not connect directly to a 3.3 V FPGA pin.
   Verify its high level and use a divider or level shifter when required.
 - Only A0-A5 are assumed to accept 0-3.3 V analog signals through the Arty
