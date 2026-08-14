@@ -122,6 +122,12 @@ metastability safety, so also explain the structural reason for two stages.
 
 ## Completion evidence
 
+Current hardware status (2026-08-13): the project owner programmed the FPGA and
+reported that the physical KY-008 transmitter functional test passed. The
+confirmed wiring is `S` to JA4, `-` to JA5 ground, with the middle pin left
+unconnected. Electrical measurements and DAOKI receiver validation remain
+separate follow-up evidence.
+
 - Annotated wiring photo and measured supply/current table.
 - DAOKI receiver raw and translated high/low voltages.
 - Passing safety-guard testbench.

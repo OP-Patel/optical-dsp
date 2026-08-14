@@ -1,14 +1,14 @@
-# Milestone 05 partial completion report
+# Milestone 05 completion evidence
 
 ## Identity
 
 | Field | Value |
 |---|---|
 | Milestone | `05 — Laser transmitter and DAOKI digital bring-up` |
-| Date prepared | 2026-08-12, America/Toronto |
+| Date prepared | 2026-08-13, America/Toronto |
 | Git commit | `958be2c4e748ce43d9b26a80d551c26ba153ff27` plus intentional uncommitted Milestone 05 work |
 | Vivado/simulator | Vivado and Vivado Simulator 2026.1, build 6511674 |
-| Hardware status | FPGA connected, but no wiring/programming/optical test performed in this report |
+| Hardware status | `PASS` - physical KY-008 transmitter functional test completed by the project owner on 2026-08-13 |
 
 ## What I built
 
@@ -55,7 +55,20 @@ artifacts/bitstreams/optical_tx_bringup_top.bit
 SHA-256 B57D7D96881556E4AD815156586618C8606C43A20394651839483C649D1A34C3
 ```
 
-The bitstream was generated but deliberately not programmed.
+The prepared bitstream was programmed onto the FPGA. The project owner reported
+that the physical KY-008 transmitter test passed with `S` connected to JA4,
+`-` connected to JA5 ground, and the middle module pin left unconnected.
+
+## Physical transmitter verification
+
+| Test | Observed result | Pass? |
+|---|---|---|
+| FPGA programming and optical transmitter operation | KY-008 responded to the programmed FPGA output using the documented two-wire connection | Yes |
+| Delivered-module pinout | `S` to JA4, `-` to JA5 ground, middle pin unconnected | Yes |
+
+This is a user-observed functional pass. Loaded JA4 voltage/current, supply
+measurements, annotated photos, and DAOKI receiver tests have not been recorded,
+so this report does not invent or imply those measurements.
 
 ## Commands run
 
@@ -73,21 +86,24 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\fpga.ps1 `
     -VivadoPath C:\AMDDesignTools\2026.1\Vivado\bin\vivado.bat
 ```
 
-## Hardware verification still required
+## Follow-up evidence still required
 
 - [ ] Record annotated wiring photos and module IDs.
 - [ ] Record the already-working KY-008's loaded `S` voltage and GPIO current.
 - [ ] Measure module OFF/ON supply current and voltage.
-- [ ] Verify reset, SW0 disable, and mode `00` produce a low JA4 output.
-- [ ] Verify OFF, ON, TRAINING, and FRAMED optically at 1 kbit/s.
+- [x] Program the FPGA and confirm that the KY-008 operates from JA4.
+- [x] Confirm the physical pinout: `S` to JA4, `-` to JA5, middle pin unconnected.
+- [ ] Record separate physical observations for reset, SW0 disable, and mode `00`.
+- [ ] Record separate physical observations for OFF, ON, TRAINING, and FRAMED at 1 kbit/s.
 - [ ] Measure raw DAOKI receiver dark/illuminated voltages before JA1 connection.
 - [ ] Verify LD6 follows the safely translated receiver output.
 - [ ] Record the highest reliable DAOKI diagnostic rate.
 
 ## Reviewer decision
 
-- Status: `IN PROGRESS — AWAITING PHYSICAL TEST`
+- Status: `PHYSICAL TRANSMITTER FUNCTIONAL TEST PASS — ELECTRICAL AND RECEIVER EVIDENCE PENDING`
 - RTL/build blocker: None.
-- Safe next action: Complete the measured wiring and physical sequence above.
+- Safe next action: Record the remaining electrical measurements and DAOKI
+  receiver evidence without changing the confirmed KY-008 wiring.
 - Safe next milestone: Milestone 06 only after this report's hardware items are
   recorded and the Milestone 05 exit checklist is complete.
