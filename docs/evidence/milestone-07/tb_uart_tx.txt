@@ -1,0 +1,31 @@
+#-----------------------------------------------------------
+# xsim v2026.1 (64-bit)
+# SW Build 6511674 on Tue Jun 16 11:02:23 MDT 2026
+# IP Build 6504888 on Tue Jun 09 09:05:25 MDT 2026
+# SharedData Build 6501428 on Mon Jun 08 17:34:18 MDT 2026
+# Start of session at: Fri Aug 14 23:52:42 2026
+# Process ID         : 35400
+# Current directory  : C:/Users/Om Patel/Desktop/arty-optical-dsp
+# Command line       : xsim.exe -log docs\evidence\milestone-07\tb_uart_tx.txt -mode tcl -source {xsim.dir/tb_uart_tx_sim/xsim_script.tcl}
+# Log file           : C:/Users/Om Patel/Desktop/arty-optical-dsp/docs/evidence/milestone-07/tb_uart_tx.txt
+# Journal file       : C:/Users/Om Patel/Desktop/arty-optical-dsp\xsim.jou
+# Running On         : Om
+# Platform           : Windows 11
+# Operating System   : 26200
+# Processor Detail   : Intel(R) Core(TM) Ultra 9 185H
+# CPU Frequency      : 3072 MHz
+# CPU Physical cores : 16
+# CPU Logical cores  : 22
+# Host memory        : 33945 MB
+# Swap memory        : 8053 MB
+# Total Virtual      : 41998 MB
+# Available Virtual  : 18469 MB
+#-----------------------------------------------------------
+source xsim.dir/tb_uart_tx_sim/xsim_script.tcl
+# xsim {tb_uart_tx_sim} -autoloadwcfg -runall
+Time resolution is 1 ps
+run -all
+PASS: tb_uart_tx checks=426 clocks_per_bit=10 bytes=6
+$finish called at time : 6160 ns : File "C:/Users/Om Patel/Desktop/arty-optical-dsp/rtl/tb/tb_uart_tx.sv" Line 166
+exit
+INFO: [Common 17-206] Exiting xsim at Fri Aug 14 23:52:44 2026...

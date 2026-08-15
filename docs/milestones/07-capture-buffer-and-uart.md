@@ -1,165 +1,173 @@
 # Milestone 07 — Capture buffer and UART evidence path
 
-**Time box:** 2 days
 **Depends on:** [Milestone 06](06-xadc-acquisition.md)
-**Produces:** A permanent bounded sample-capture tap, UART transmitter, packet
-encoder, and reusable Python packet decoder
 
-## Why this milestone exists
+**Produces:** A bounded 1,024-sample acquisition tap, a checked UART packet
+path, and a reusable Python decoder/CSV capture tool
 
-You need to see real XADC samples before designing filters. Continuously sending
-250 kSa/s over a basic UART is neither necessary nor reliable. Instead, capture
-a bounded block at full sample rate, freeze it, and transmit it afterward. The
-capture tap remains in the final design for diagnostics and offline plots.
+## What this milestone does
 
-## Permanent components
+The XADC produces samples at about 240 kSa/s, but a 115200-baud UART cannot
+carry that stream continuously. This design separates acquisition from
+transport:
 
-```text
-rtl/common/uart_tx.sv
-rtl/common/crc16_ccitt.sv
-rtl/control/packet_tx.sv
-rtl/acquisition/sample_capture.sv
-rtl/control/capture_streamer.sv
-sim/tb/tb_uart_tx.sv
-sim/tb/tb_crc16_ccitt.sv
-sim/tb/tb_sample_capture.sv
-sim/tb/tb_packet_tx.sv
-host/optical_dsp_host/protocol.py
-host/optical_dsp_host/serial_transport.py
-host/tests/test_protocol.py
+1. BTN1 arms an empty block-RAM capture buffer.
+2. BTN2 triggers capture on the next `sample_valid` event.
+3. Exactly 1,024 valid XADC samples are written at the acquisition rate.
+4. The frozen buffer is read afterward and wrapped in one CRC-protected packet.
+5. The UART sends that packet to the PC, where Python verifies and decodes it.
+
+The UART never backpressures the XADC. Samples are transmitted only after the
+full-rate capture has finished.
+
+## Block flow
+
+```mermaid
+flowchart TD
+    A["A0 analog input"] --> B["XADC<br/>12-bit samples"]
+    B --> C["DRP controller<br/>valid + index"]
+    C --> D["Capture block RAM<br/>1,024 samples"]
+    D --> E["Capture streamer<br/>metadata + bytes"]
+    E --> F["Packet encoder<br/>header + CRC"]
+    F --> G["UART transmitter<br/>115200 8N1"]
+    G --> H["USB serial link"]
+    H --> I["Python decoder"]
+    I --> J["Indexed sample CSV"]
+    K["BTN1 arm"] --> D
+    L["BTN2 trigger"] --> D
 ```
 
-The Python files begin the final host library; do not write a one-off decoder
-that will be discarded before the command and evidence tools are complete.
+## Implemented structure
 
-## UART TX contract
-
-Use 115200 baud, 8 data bits, no parity, one stop bit. With a 100 MHz clock, an
-integer divider of 868 clocks per bit has very small baud error; calculate and
-record the exact actual baud. Use the Milestone 02 enable style rather than a
-generated UART clock.
-
-Suggested byte interface:
-
-| Signal | Meaning |
+| Component | Responsibility |
 |---|---|
-| `data_valid` | Producer presents a byte |
-| `data_byte` | Byte to send |
-| `data_ready` | UART can accept a byte this cycle |
-| `tx` | Idle-high serial output |
-| `busy` | A frame is in progress |
+| `rtl/acquisition/sample_capture.sv` | Arm/trigger state and 1,024 × 12-bit block RAM |
+| `rtl/control/capture_streamer.sv` | Converts frozen metadata and RAM samples to payload bytes |
+| `rtl/control/packet_tx.sv` | Adds header, sequence, and CRC through ready/valid handshakes |
+| `rtl/common/crc16_ccitt.sv` | Streaming CRC-16/CCITT-FALSE calculation |
+| `rtl/common/uart_tx.sv` | 115200-baud, 8N1, LSB-first serial transmitter |
+| `rtl/top/capture_uart_bringup_top.sv` | XADC-to-capture-to-UART integration |
+| `host/optical_dsp_host/` | Reusable packet decoder and serial transport |
+| `host/capture_samples.py` | Receives one capture and writes indexed raw codes to CSV |
 
-Once accepted, the UART owns a copy of the byte. The producer must not overwrite
-it while busy.
+## Physical controls and indicators
 
-## Packet format
+| Board item | FPGA pin | Use |
+|---|---|---|
+| BTN0 | D9 | Reset |
+| BTN1 | C9 | Arm a new empty capture |
+| BTN2 | B9 | Trigger the armed capture |
+| A0 / VAUX4 P | C6 | Analog input |
+| A0 / VAUX4 N | C5 | Analog return |
+| USB-UART TX | D10 | FPGA transmit data to the PC |
+| LD4 | H5 | Armed |
+| LD5 | J5 | Capturing |
+| LD6 | T9 | Capture complete / frozen |
+| LD7 | T10 | Sticky acquisition, control, or packet fault |
 
-Freeze a bounded transport that Milestone 13 can extend bidirectionally:
+BTN1 and BTN2 are synchronized and converted to rising-edge pulses. Press BTN1
+first, then BTN2. A trigger received when the buffer is not armed sets the
+sticky rejected-trigger indication. Reset clears sticky status.
+
+## Frozen UART convention
+
+| Item | Value |
+|---|---|
+| Requested baud | 115200 |
+| FPGA clock | 100 MHz |
+| Integer bit period | 868 clocks |
+| Actual baud | 115207.373 baud |
+| Baud error | +0.0064% |
+| Framing | 8 data bits, no parity, 1 stop bit |
+| Bit order | Data bit 0 first; line idle high |
+
+`data_valid` may remain asserted until `data_ready`. A byte transfers on the
+clock where both are high; UART then owns an internal copy for all ten serial
+bit periods.
+
+## Frozen packet convention
 
 ```text
-sync[2] | version[1] | type[1] | payload_length[2] | sequence[2] |
-payload[0..MAX] | CRC16[2]
+A5 5A | version | type | payload_length_le | sequence_le | payload | crc_le
+  2 B |    1 B  | 1 B  |       2 B        |     2 B     | 0..4096 | 2 B
 ```
 
-Decide and document:
+- Version is `01` and capture packet type is `02`.
+- All multi-byte transport and capture fields are little-endian.
+- CRC is CRC-16/CCITT-FALSE: polynomial `0x1021`, initial value `0xFFFF`, no
+  reflection, no final XOR, processed MSB-first within each byte.
+- CRC covers `version` through the final payload byte; it excludes sync and the
+  appended CRC bytes.
+- The Python streaming decoder searches for `A5 5A`, rejects impossible lengths
+  or CRC failures, discards one byte, and searches again. It preserves a lone
+  trailing `A5` so sync can span two serial reads.
 
-- exact sync bytes;
-- byte order for 16-bit fields;
-- CRC-16/CCITT initial value, polynomial, input order, and covered bytes;
-- maximum payload length;
-- packet types for status and sample capture; and
-- how the decoder resynchronizes after noise or a partial packet.
+The capture payload is:
 
-A capture packet should include sample start index, sample count, sample format,
-and packed samples. Keep each 12-bit sample in a 16-bit field initially; saving
-bandwidth is less important than readability.
+```text
+start_index_le[8] | sample_count_le[2] | format[1] | samples[count][2]
+```
 
-## Capture-buffer contract
+Format `01` means one unsigned 12-bit XADC code in the low bits of each
+little-endian 16-bit sample field. Bits 15:12 must be zero.
 
-Use a fixed or parameterized depth such as 1024 samples.
+## Capture behavior
 
-| Input/control | Behavior |
-|---|---|
-| `arm` | Prepare an empty capture |
-| `trigger` | Begin accepting the next valid sample |
-| `sample_valid`, `sample_u12`, `sample_index` | Acquisition stream |
-| `capture_done` | Buffer is frozen and complete |
-| read address/data | Separate post-capture read port for the streamer |
+The capture FSM has four states: idle, armed, active, and complete. `arm` clears
+the previous metadata and prepares the buffer. `trigger` changes armed to
+active. Each `sample_valid` writes one code; gaps do not consume addresses.
+The first accepted sample's 64-bit acquisition index is saved as
+`capture_start_index`. After entry 1,023, memory and metadata freeze until the
+next accepted arm.
 
-The capture must never backpressure XADC. If triggered while busy, reject the
-request and set a visible status flag rather than corrupting the current buffer.
+The RAM has one acquisition write port and a separate synchronous read port.
+The streamer explicitly waits for read latency, so simulation and inferred FPGA
+RAM have the same behavior.
 
-For V1, inferred registers are acceptable at 1024 samples, but learn the coding
-style that allows Vivado to infer block RAM. A single writer and a separate
-read-after-capture phase keep ownership clear.
+## Automated verification
 
-## SystemVerilog guidance
+- `tb_uart_tx.sv`: exact bit duration, independent decode of `00`, `FF`, `55`,
+  `A6`, held-valid back-to-back traffic, and reset during a byte.
+- `tb_crc16_ccitt.sv`: published `123456789` result `0x29B1`.
+- `tb_sample_capture.sv`: gapped ramp, count/index/order, busy-trigger rejection,
+  synchronous readback, and reset from every state.
+- `tb_packet_tx.sv`: zero, ordinary, and maximum payloads, backpressure,
+  oversize rejection, exact header, and independently calculated CRC.
+- `tb_capture_streamer.sv`: integrated RAM-to-packet path checked byte-for-byte
+  against the same frozen fixture decoded by Python.
+- `host/tests/test_protocol.py`: packet encoding, CRC rejection, fragmented
+  input, noise recovery, capture parsing, and the cross-language fixture.
 
-- UART is a state machine: idle, start bit, eight data bits, stop bit. Register
-  the accepted byte and shift from that register.
-- Confirm whether bit 0 or bit 7 is transmitted first; standard UART sends LSB
-  first.
-- `data_valid/data_ready` is a one-cycle transfer when both are high. Document
-  whether valid may stay asserted until accepted.
-- For CRC, update once per accepted byte. Load the initial value at packet start
-  and append the final value only after the covered bytes.
-- The packet encoder should not know where payload bytes originate. Give it a
-  small request/byte-stream interface so status and capture producers can reuse
-  it.
-- Do not read a memory entry on the same cycle you change its synchronous read
-  address and assume zero latency; model the chosen RAM behavior.
+## Build, program, and receive
 
-## Testbench requirements
+```powershell
+.\scripts\fpga.cmd build `
+    -BuildScript scripts\build_capture_uart_bringup.tcl
 
-### UART TX
+.\scripts\fpga.cmd program `
+    -Bitstream artifacts\bitstreams\capture_uart_bringup_top.bit
 
-1. Decode the simulated `tx` line independently and verify several bytes,
-   including `00`, `FF`, `55`, and `A6`.
-2. Check start, data, and stop duration in system-clock cycles.
-3. Present bytes back-to-back through `valid/ready`.
-4. Reset during a byte and require return to idle-high.
+python -m pip install pyserial
+python host\capture_samples.py COM5 --output artifacts\captures\a0-ground.csv
+```
 
-### CRC and packet encoder
-
-1. Validate CRC against a published check vector such as ASCII `123456789` for
-   your exact CRC convention.
-2. Encode zero-length, ordinary, and maximum-length packets.
-3. Decode the resulting UART bytes with the Python library and compare every
-   field and payload byte.
-4. Corrupt one byte and require Python CRC rejection.
-
-### Capture buffer
-
-1. Capture a ramp with gaps in `sample_valid`; memory must contain only valid
-   samples in exact order.
-2. Verify first/last address and exact sample count.
-3. Trigger while busy and verify the documented rejection/status behavior.
-4. Read every entry and compare it with the source scoreboard.
-5. Reset while armed, capturing, and complete.
-
-## Hardware check
-
-Capture grounded A0 and at least one known DC level. Send the packet through the
-Arty USB-UART, decode it using the permanent Python library, and save a CSV. The
-sample indices must be consecutive and the sample count exact.
-
-## Completion evidence
-
-- Passing RTL and Python tests, including a cross-language packet fixture.
-- UART timing/baud calculation.
-- One decoded hardware capture with metadata and summary statistics.
-- Capture-to-host latency measurement; this is diagnostic latency, not sample
-  throughput.
+Replace `COM5` with the Arty USB-UART port. Start the Python receiver, press
+BTN1, then BTN2. A full 1,024-sample capture contains 2,069 UART bytes and takes
+about 179.6 ms on the wire. Filling the RAM takes about 4.26 ms at the expected
+Milestone 6 sample rate; transport happens afterward.
 
 ## Done when
 
-- [ ] Full-rate acquisition continues while the bounded buffer fills.
-- [ ] Captures contain exact ordered samples and starting index.
-- [ ] Packets survive RTL-to-Python round-trip with verified CRC.
-- [ ] UART reset and back-to-back byte behavior are tested.
-- [ ] The host decoder is structured for reuse by Milestone 13 and final qualification.
+- [x] Full-rate acquisition continues while the bounded buffer fills.
+- [x] Simulated captures contain exact ordered samples and starting index.
+- [x] Packets pass the RTL-to-Python fixture with verified CRC.
+- [x] UART reset, timing, and back-to-back behavior are tested.
+- [x] The host decoder is structured for Milestone 13 reuse.
+- [ ] A grounded and known-level A0 capture has been received and saved as CSV.
+
+The remaining item is physical evidence, not an RTL or routed-build blocker.
 
 ## What this unlocks
 
-Milestone 08 can characterize the actual BPW34 path from captured samples rather
-than guessing from an LED or marketplace specification.
+Milestone 08 can characterize the real BPW34 analog path using captured sample
+blocks instead of estimating behavior from an LED.

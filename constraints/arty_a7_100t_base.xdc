@@ -19,3 +19,4 @@ set_property -dict {PACKAGE_PIN D9 IOSTANDARD LVCMOS33} \
 #   foundation_top.xdc
 #   optical_tx_bringup_top.xdc
 #   xadc_bringup_top.xdc
+#   capture_uart_bringup_top.xdc

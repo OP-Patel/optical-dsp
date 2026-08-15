@@ -1,0 +1,12 @@
+test_capture_packet_round_trip (test_protocol.ProtocolTests.test_capture_packet_round_trip) ... ok
+test_crc_corruption_rejected (test_protocol.ProtocolTests.test_crc_corruption_rejected) ... ok
+test_crc_published_check_vector (test_protocol.ProtocolTests.test_crc_published_check_vector) ... ok
+test_length_and_sample_format_validation (test_protocol.ProtocolTests.test_length_and_sample_format_validation) ... ok
+test_rtl_capture_fixture (test_protocol.ProtocolTests.test_rtl_capture_fixture) ... ok
+test_stream_decoder_resynchronizes (test_protocol.ProtocolTests.test_stream_decoder_resynchronizes) ... ok
+test_zero_length_packet (test_protocol.ProtocolTests.test_zero_length_packet) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.014s
+
+OK

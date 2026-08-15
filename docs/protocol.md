@@ -72,3 +72,29 @@ sequence over long captures, while a premature recurrence would reduce pattern
 coverage and could hide data-dependent link faults. The zero state is excluded
 because it would produce zeros forever and therefore provide no useful link
 stress.
+
+## V1 host UART packet convention
+
+Milestone 7 adds a diagnostic host transport that is independent of the optical
+frame above. Its byte layout is:
+
+```text
+A5 5A | 01 | type | payload_length_le[2] | sequence_le[2] | payload | crc_le[2]
+```
+
+The maximum payload is 4,096 bytes. Type `02` carries a sample capture. The CRC
+is CRC-16/CCITT-FALSE with polynomial `0x1021`, initial value `0xFFFF`, no input
+or output reflection, and no final XOR. It covers every byte beginning with the
+version and ending with the payload; sync and CRC bytes are excluded. The
+published ASCII `123456789` check value is `0x29B1`.
+
+Capture payload type `02` is:
+
+```text
+start_index_le[8] | sample_count_le[2] | format[1] | sample_u16_le[count]
+```
+
+Format `01` stores each unsigned 12-bit XADC code in bits 11:0 of a 16-bit
+little-endian field. The Python streaming decoder resynchronizes by searching
+for `A5 5A`; after an invalid length or CRC it advances one byte and repeats the
+search.
