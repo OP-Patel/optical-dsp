@@ -163,9 +163,10 @@ Milestone 6 sample rate; transport happens afterward.
 - [x] Packets pass the RTL-to-Python fixture with verified CRC.
 - [x] UART reset, timing, and back-to-back behavior are tested.
 - [x] The host decoder is structured for Milestone 13 reuse.
-- [ ] A grounded and known-level A0 capture has been received and saved as CSV.
+- [x] Grounded and nominal-3.3 V A0 captures were received and saved as CSV.
 
-The remaining item is physical evidence, not an RTL or routed-build blocker.
+Milestone 7 is complete. Independent voltage calibration and BPW34 measurements
+belong to the following analog-characterization milestone.
 
 ## What this unlocks
 

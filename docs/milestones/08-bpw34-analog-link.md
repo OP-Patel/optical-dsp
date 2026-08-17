@@ -1,151 +1,237 @@
 # Milestone 08 — BPW34 analog-link characterization
 
-**Time box:** 1-2 days
 **Depends on:** [Milestone 05](05-laser-and-daoki-bringup.md),
 [Milestone 06](06-xadc-acquisition.md), and
 [Milestone 07](07-capture-buffer-and-uart.md)
-**Produces:** The final V1 detector, load resistance, geometry, signal range,
-and verified 1/10 kbit/s analog path
 
-## Why this milestone exists
+**Produces:** The selected V1 detector, load resistance, fixed geometry, signal
+range, and verified 1/10 kbit/s analog path
 
-This milestone makes the hardware choice once, using measurements. You are not
-building several receiver prototypes. You screen the purchased BPW34-style
-parts, choose a load resistor from a small controlled sweep, and freeze the V1
-front end. Later DSP work uses these captured characteristics and does not
-redesign the analog path unless the 10 kbit/s baseline is impossible.
+## What this milestone does
+
+Milestone 7 proved the A0-to-CSV path at the electrical endpoints. Milestone 8
+uses that same path to screen the five BPW34-style detectors and choose one
+passive receiver configuration. This is measurement and selection work, not a
+new DSP design.
 
 ## Starting circuit
 
-Use the provisional reverse-biased circuit from the main project plan:
-
 ```text
-3.3 V -> photodiode cathode
-photodiode anode -> sense node -> Arty A0
-sense node -> load resistor -> GND
+Arty 3V3 ---------------- BPW34 cathode
+                          BPW34 anode
+                               |
+                               +---------- Arty A0
+                               |
+                             10 kΩ
+                               |
+Arty GND ----------------------+---------- KY-008 ground
 ```
 
-Start at 10 kΩ. The expected sense voltage rises with light and is bounded by
-the 3.3 V bias, but verify polarity and voltage before connecting A0. If the
-device behaves oppositely, disconnect and identify its actual pinout; do not
-“fix” polarity in RTL.
+The photodiode anode, resistor, and A0 meet at one sense node. Do not connect
+the anode directly to ground. Start with 10 kΩ. Use only this passive, 3.3 V
+bounded circuit until measurements justify a different front end.
 
-## Questions this milestone must answer
+The purchased devices are unverified BPW34-compatible parts. Label them
+`pd01` through `pd05` and verify each device's physical orientation instead of
+assuming every package has trustworthy markings.
 
-1. Which of the five photodiodes has the most repeatable useful response?
-2. What are dark, ambient, laser-off, laser-on, and blocked-path code ranges?
-3. Does 10 kΩ provide both useful amplitude separation and sufficiently fast
-   edges at 10 kbit/s?
-4. Does the sense node remain within 0-3.3 V under maximum illumination?
-5. How sensitive is the result to distance, alignment, and room lighting?
-6. What fixed geometry and impairment method will later benchmarks use?
+## Combined FPGA image
 
-## Controlled, limited sweep
-
-This is not a sequence of new prototypes. Use the same circuit and socketed
-resistor, then freeze one result.
-
-Suggested resistor set:
-
-- 4.7 kΩ: more bandwidth/headroom, less voltage sensitivity;
-- 10 kΩ: baseline;
-- 47 kΩ: more voltage sensitivity, potentially slower edges.
-
-Skip values you do not own. Do not add an op-amp in this milestone unless none
-of the available values can separate on/off at 1 kbit/s. If that occurs, stop
-and document the measured blocker before expanding scope.
-
-## Reuse existing RTL
-
-No new DSP module is needed. Build a milestone top from permanent blocks:
+`rtl/top/bpw34_characterization_top.sv` combines the permanent transmitter,
+XADC capture, packet, and UART components:
 
 ```text
-framer -> output guard -> laser
-XADC -> sample capture -> packet TX -> UART
+switches -> framer -> output guard -> JA4 -> KY-008
+A0 -> XADC -> capture RAM -> packet/CRC -> UART -> Python
 ```
 
-Add only configuration wiring or status required to select OFF, ON, TRAINING,
-and FRAMED modes. Do not write a temporary filter or threshold detector.
+Build and program it with:
 
-## Measurement procedure
+```powershell
+.\scripts\fpga.cmd build `
+    -BuildScript scripts\build_bpw34_characterization.tcl
 
-For each photodiode ID at 10 kΩ:
+.\scripts\fpga.cmd program `
+    -Bitstream artifacts\bitstreams\bpw34_characterization_top.bit
+```
 
-1. Capture dark/covered samples.
-2. Capture room-ambient samples with laser off.
-3. Capture aligned laser-on DC samples.
-4. Capture continuous training pattern at 1 kbit/s.
-5. Record mean, standard deviation, minimum, maximum, and on/off separation.
+### Physical controls
 
-Choose the best two devices, then sweep the available resistor values at fixed
-geometry:
+| Control | Function |
+|---|---|
+| BTN0 | Reset and clear sticky capture status |
+| BTN1 | Arm an empty 1,024-sample capture |
+| BTN2 | Trigger the armed capture |
+| SW0 | Final laser-output enable |
+| SW1 | Transmit mode bit 0 |
+| SW2 | Transmit mode bit 1 |
+| SW3 | Symbol rate: `0` = 1 kbit/s, `1` = 10 kbit/s |
 
-1. OFF and ON DC captures.
-2. Training captures at 1 kbit/s and 10 kbit/s.
-3. Optional 25 kbit/s observation only after 10 kbit/s succeeds.
-4. Block/unblock and small repeatable misalignment captures.
+Mode is `{SW2, SW1}`:
 
-Use the same number of samples, distance, supply voltage, ambient condition, and
-laser module ID for comparisons.
+| SW2 | SW1 | Mode |
+|---:|---:|---|
+| 0 | 0 | OFF |
+| 0 | 1 | ON |
+| 1 | 0 | TRAINING |
+| 1 | 1 | FRAMED |
 
-## Analysis to perform yourself
+Change SW1–SW3 only while SW0 is off. Then set SW0 on when the intended mode
+and rate are visible on the switches.
 
-For each capture calculate:
+### Status LEDs
+
+| LED | Meaning |
+|---|---|
+| LD4 | Capture armed |
+| LD5 | Capture RAM actively filling; it lasts only about 4.3 ms |
+| LD6 | Capture complete/frozen or being transmitted |
+| LD7 | Sticky XADC, rejected-control, capture, or packet fault |
+
+The XADC controller now recognizes an extended startup EOC as one event, so the
+configuration-time false fault observed in Milestone 7 should no longer occur.
+BTN0 still clears all state if LD7 is ever set.
+
+## Labeled capture tool
+
+`host/characterize_bpw34.py` creates deterministic filenames and JSON sidecars
+containing the physical metadata, CRC result, sample statistics, consecutive
+index result, and CSV SHA-256. It refuses to overwrite an existing run unless
+`--force` is explicitly supplied. It checks that the condition/rate pairing is
+valid and prints the exact SW0/SW2/SW1/SW3 values before opening the serial
+port.
+
+Example capture:
+
+```powershell
+python host\characterize_bpw34.py capture COM5 `
+    --detector pd01 `
+    --resistor-ohms 10000 `
+    --condition dark `
+    --rate 0 `
+    --run 1 `
+    --distance-cm 20 `
+    --ambient "room lights on"
+```
+
+Start the command first. When it says it is waiting, press BTN1 and then BTN2.
+The default output directory is `artifacts/captures/milestone-08/`.
+
+Supported condition labels are `dark`, `ambient`, `off`, `on`, `training`,
+`blocked`, and `misaligned`. Rates are `0`, `1000`, and `10000`. The optional
+25 kbit/s stretch rate is intentionally unavailable until a later image
+explicitly adds and verifies it.
+
+Summarize saved captures with:
+
+```powershell
+python host\characterize_bpw34.py summary `
+    artifacts\captures\milestone-08\pd01_r10000ohm_off_dc_run01.csv `
+    artifacts\captures\milestone-08\pd01_r10000ohm_on_dc_run01.csv
+```
+
+Compare OFF, ON, and training captures with:
+
+```powershell
+python host\characterize_bpw34.py compare `
+    --off artifacts\captures\milestone-08\pd01_r10000ohm_off_dc_run01.csv `
+    --on artifacts\captures\milestone-08\pd01_r10000ohm_on_dc_run01.csv `
+    --training artifacts\captures\milestone-08\pd01_r10000ohm_training_1000bps_run01.csv `
+    --output artifacts\reports\pd01-r10000-comparison.json
+```
+
+Add `--plot-dir artifacts/plots/pd01-r10000` to generate an OFF/ON histogram
+and raw training plots. Plotting is optional and requires:
+
+```powershell
+python -m pip install matplotlib
+```
+
+The comparison report calculates:
 
 ```text
 separation = mean_on - mean_off
-pooled_noise ≈ sqrt(std_on^2 + std_off^2)
+pooled_noise = sqrt(std_off² + std_on²)
 simple_quality = separation / pooled_noise
 ```
 
-Also estimate rise/fall time in samples and compare it with the samples per
-symbol. This quality number is not a calibrated optical SNR; label it as a
-relative engineering metric.
+It also estimates 10–90% rising and falling transition times from each supplied
+training capture. This is a relative engineering metric, not calibrated optical
+SNR.
 
-Plot:
+## Phase A — screen all five detectors
 
-- raw training samples versus sample index;
-- histograms for off and on levels;
-- mean/separation versus resistor value; and
-- one overlaid edge at 1 and 10 kbit/s.
+Keep the distance, alignment fixture, 10 kΩ resistor, room lighting, capture
+length, and KY-008 unchanged. For each `pd01` through `pd05`, collect:
 
-## Verification requirements
+1. `dark`: detector physically covered, laser disabled.
+2. `ambient`: uncovered under the declared room lighting, laser disabled.
+3. `off`: aligned geometry with laser disabled.
+4. `on`: aligned laser continuously on.
+5. `training`: aligned alternating laser at 1 kbit/s.
 
-- Every capture packet passes CRC and has consecutive sample indices.
-- No capture hits code 0 or 4095 unintentionally; if it does, explain clipping.
-- Repeat the chosen configuration three times after realigning from scratch.
-- The selected setup must show distinguishable levels at 10 kbit/s with enough
-  transition margin for later phase selection.
-- Record failures honestly; do not select only the cleanest capture.
+Use a unique detector and run number in every command. Do not retain only the
+cleanest trace. Compare the five OFF/ON pairs and select the best two based on:
 
-## Freeze record
+- positive, repeatable ON/OFF separation;
+- low pooled noise;
+- no unexplained codes at 0 or 4095;
+- clean 1 kbit/s transitions; and
+- low sensitivity to small realignment.
 
-Create `docs/hardware/optical-afe-selection.md` containing:
+## Phase B — resistor and rate sweep
 
-- chosen DAOKI transmitter ID and photodiode ID;
-- verified photodiode orientation and load resistance;
-- exact wiring, distance, mounting, beam stop, and ambient-light policy;
-- measured code ranges and transition times;
-- nominal and degraded alignment settings;
-- evidence paths and capture hashes; and
-- the trigger that would justify a future TIA.
+For the best two devices, test only resistor values already available. The
+suggested limited set is 4.7 kΩ, 10 kΩ, and 47 kΩ. At each value collect:
+
+1. OFF DC.
+2. ON DC.
+3. TRAINING at 1 kbit/s (`SW3=0`).
+4. TRAINING at 10 kbit/s (`SW3=1`).
+5. One blocked-path and one repeatable misalignment capture.
+
+Higher resistance may increase separation but slow transitions or clip. Lower
+resistance may improve transition speed but reduce separation. Freeze the
+smallest/simplest value that keeps distinct levels and adequate transition
+margin at 10 kbit/s.
+
+## Phase C — repeatability
+
+For the selected detector, resistor, distance, and lighting policy:
+
+1. Remove or deliberately misalign the detector.
+2. Rebuild the declared nominal alignment from scratch.
+3. Capture OFF, ON, and 10 kbit/s training.
+4. Repeat the realignment and capture sequence three times.
+
+Record all three runs in `docs/hardware/optical-afe-selection.md` and freeze the
+geometry only if they remain consistent.
+
+## Safety and acceptance
+
+- Begin wiring with SW0 off and mode OFF.
+- Use only the 3V3 rail, never 5V or VU, for the passive detector bias.
+- Confirm the resistor is present before enabling the laser.
+- If a capture reaches 0 or 4095, stop and explain the clipping before changing
+  resistance or alignment.
+- If illumination reduces rather than increases the sense code, disconnect and
+  recheck photodiode orientation; do not invert the result in RTL.
+- A multimeter or oscilloscope is still required before connecting any future
+  active or externally powered analog front end to A0.
 
 ## Done when
 
 - [ ] All available detectors were screened consistently.
 - [ ] One detector/load/geometry is frozen for V1.
-- [ ] 10 kbit/s training transitions are captured without unsafe voltage or
+- [ ] 10 kbit/s training transitions were captured without unsafe voltage or
   unexplained clipping.
-- [ ] Nominal and degraded conditions are repeatable three times.
-- [ ] The analog selection record is complete enough to rebuild the circuit.
+- [ ] Nominal and degraded conditions were repeated three times.
+- [ ] `docs/hardware/optical-afe-selection.md` is complete enough to rebuild
+  the circuit.
 
 ## Scope guard
 
-Do not optimize for 25 kbit/s at the expense of finishing 10 kbit/s. Do not add
-multiple analog boards, automatic gain control, or a custom PCB. Those are V2
-ideas after the complete baseline works.
-
-## What this unlocks
-
-Milestones 09-11 can design fixed-point receive processing against actual signal
-ranges rather than assumed ones.
+Do not optimize for 25 kbit/s at the expense of completing 10 kbit/s. Do not
+add an op-amp, automatic gain control, multiple analog boards, or a custom PCB
+unless every available passive configuration fails the documented 1 kbit/s
+screening test.

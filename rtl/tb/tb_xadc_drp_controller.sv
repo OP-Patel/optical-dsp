@@ -24,6 +24,16 @@ logic sample_valid;
 logic [INDEX_WIDTH-1:0] sample_index;
 logic xadc_busy;
 logic xadc_fault;
+logic extended_eoc = 1'b0;
+logic extended_drdy = 1'b0;
+logic [15:0] extended_do = 16'b0;
+logic extended_den;
+logic [6:0] extended_daddr;
+logic [11:0] extended_sample;
+logic extended_sample_valid;
+logic [INDEX_WIDTH-1:0] extended_sample_index;
+logic extended_busy;
+logic extended_fault;
 int checks = 0;
 int valid_pulses = 0;
 int den_pulses = 0;
@@ -61,6 +71,24 @@ xadc_drp_controller #(
     .sample_index(sample_index),
     .xadc_busy(xadc_busy),
     .xadc_fault(xadc_fault)
+);
+
+xadc_drp_controller #(
+    .TIMEOUT_CYCLES(TIMEOUT_CYCLES),
+    .INDEX_WIDTH(INDEX_WIDTH)
+) extended_eoc_dut(
+    .clk(clk),
+    .rst(rst),
+    .xadc_eoc(extended_eoc),
+    .xadc_drdy(extended_drdy),
+    .xadc_do(extended_do),
+    .xadc_den(extended_den),
+    .xadc_daddr(extended_daddr),
+    .sample_u12(extended_sample),
+    .sample_valid(extended_sample_valid),
+    .sample_index(extended_sample_index),
+    .xadc_busy(extended_busy),
+    .xadc_fault(extended_fault)
 );
 
 always #(CLK_PERIOD / 2) clk = ~clk;
@@ -143,6 +171,25 @@ initial begin : stimulus
     assert (!sample_valid && !xadc_busy && !xadc_fault && sample_index == 0)
     else $fatal(1, "reset state was incorrect");
     checks++;
+
+    // XADC EOC can remain high during startup calibration. Treat the extended
+    // level as one event rather than reporting a false overrun.
+    @(negedge clk);
+    extended_do = {12'h5a5, 4'b0};
+    extended_eoc = 1'b1;
+    repeat (4) @(posedge clk);
+    @(negedge clk);
+    extended_eoc = 1'b0;
+    extended_drdy = 1'b1;
+    @(negedge clk);
+    extended_drdy = 1'b0;
+    @(posedge clk);
+    #1ns;
+    assert (!extended_fault && extended_sample == 12'h5a5 && extended_sample_index == 0)
+    else $fatal(1, "extended EOC created a false fault or lost its sample");
+    assert (!extended_sample_valid && !extended_busy && extended_daddr == 7'h14)
+    else $fatal(1, "extended EOC transaction did not return to idle");
+    checks += 2;
 
     start_conversion(12'h000, 0);
     expect_sample(12'h000, 0);

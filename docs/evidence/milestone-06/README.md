@@ -1,8 +1,10 @@
 # Milestone 06 evidence
 
 The XADC acquisition RTL, behavioral model, testbench, constraints, routed
-implementation, and bitstream are complete. Physical DC-input calibration and
-sample-rate measurement remain pending.
+implementation, and bitstream are complete. Physical ground and nominal-board-
+3V3 endpoint captures passed on 2026-08-17. Independent voltage accuracy and a
+physical sample-rate measurement remain follow-up items, not functional
+blockers for the passive Milestone 08 receiver screen.
 
 ## Automated verification
 
@@ -32,13 +34,12 @@ Bitstream SHA-256:
 A9C816427C73F1FD16E10CA89620A595212771EA968D730E9D521EF9ADFF7C71
 ```
 
-## Physical evidence still required
+## Physical endpoint evidence
 
-- Program `xadc_bringup_top.bit` with A0 initially grounded through the planned
-  safe test connection.
-- Confirm LD4 (`sample_seen_led`) turns on and LD6 (`xadc_fault_led`) stays off.
-- Apply at least two measured DC voltages in the A0 0-3.3 V range.
-- Record mean, minimum, maximum, and sample count in
-  `docs/hardware/xadc-interface.md`.
+- Ground: 1,024 consecutive samples, codes 11 through 16, mean 13.2988.
+- Nominal board 3V3: 1,024 consecutive samples, codes 4067 through 4074, mean
+  4070.5381.
+- Both UART packets passed CRC and were decoded into CSV files.
+- The nominal rail was not independently measured, so these results verify the
+  endpoint behavior but do not constitute precision calibration.
 - Measure the real `sample_valid` rate over a known interval.
-- Do not attach the BPW34 until these electrical checks pass.

@@ -1,13 +1,13 @@
-# Milestone 07 partial completion report
+# Milestone 07 completion report
 
 ## Identity
 
 | Field | Value |
 |---|---|
 | Milestone | `07 — Capture buffer and UART evidence path` |
-| Date prepared | 2026-08-15, America/Toronto |
+| Date completed | 2026-08-17, America/Toronto |
 | Vivado/simulator | Vivado and Vivado Simulator 2026.1, build 6511674 |
-| Hardware status | Routed bitstream ready; physical UART/A0 captures pending |
+| Hardware status | `PASS` — grounded and nominal-3.3 V captures decoded and saved |
 
 ## What was implemented
 
@@ -74,8 +74,30 @@ python host\capture_samples.py COM5 --output artifacts\captures\a0-ground.csv
 Replace `COM5` with the Arty USB-UART port, start the receiver, press BTN1 to
 arm, and then press BTN2 to trigger.
 
+## Physical verification
+
+The board was allowed to initialize and BTN0 was pressed once to clear the
+startup XADC status before each measurement. Both packets passed CRC because the
+host utility saves a CSV only after successful protocol decoding.
+
+| Input | Samples | Index range | Minimum | Maximum | Mean | CSV SHA-256 |
+|---|---:|---:|---:|---:|---:|---|
+| A0 connected to board ground | 1,024 | 734452–735475 | 11 | 16 | 13.2988 | `BCEAF3CF32A2BA3EA0FD6C489B34B1A7423EA49EDD49096C40FF858295FE8EC4` |
+| A0 connected to nominal board 3V3 | 1,024 | 6267218–6268241 | 4067 | 4074 | 4070.5381 | `05739C72C1719DD3CC0F5C481424092FFE87BAE982B16F7106FAD080D0E9516B` |
+
+Evidence files:
+
+- `artifacts/captures/a0-ground.csv`
+- `artifacts/captures/a0-3v3.csv`
+
+The response is monotonic and spans 99.08% of the ideal 12-bit range after
+subtracting the measured ground offset. The 3V3 rail was used as a nominal
+functional endpoint and was not independently measured, so this is not a
+precision voltage calibration.
+
 ## Reviewer decision
 
-- Status: `RTL / SIMULATION / ROUTED BUILD PASS — PHYSICAL CAPTURE PENDING`
+- Status: `PASS`
 - RTL/build blocker: None.
-- Remaining evidence: grounded and known-level A0 capture packets/CSVs.
+- Follow-up carried by Milestone 8: screen the passive, board-3V3-bounded BPW34
+  receiver for clipping, separation, transition speed, and repeatability.

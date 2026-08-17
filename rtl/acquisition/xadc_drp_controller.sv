@@ -28,9 +28,12 @@ typedef enum logic {
 xadc_controller_state_t controller_state;
 logic [TIMEOUT_WIDTH-1:0] timeout_counter;
 logic [INDEX_WIDTH-1:0] next_index;
+logic xadc_eoc_previous;
+logic xadc_eoc_rise;
 
 assign xadc_daddr = VAUX4_ADDRESS;
 assign xadc_busy = controller_state == WAIT_DRDY;
+assign xadc_eoc_rise = xadc_eoc && !xadc_eoc_previous;
 
 always_ff @(posedge clk or posedge rst) begin
     if (rst) begin
@@ -42,9 +45,11 @@ always_ff @(posedge clk or posedge rst) begin
         sample_valid <= 1'b0;
         sample_index <= '0;
         xadc_fault <= 1'b0;
+        xadc_eoc_previous <= 1'b0;
     end else begin
         xadc_den <= 1'b0;
         sample_valid <= 1'b0;
+        xadc_eoc_previous <= xadc_eoc;
 
         case (controller_state)
             WAIT_EOC: begin
@@ -54,14 +59,14 @@ always_ff @(posedge clk or posedge rst) begin
                     xadc_fault <= 1'b1;
                 end
 
-                if (xadc_eoc) begin
+                if (xadc_eoc_rise) begin
                     xadc_den <= 1'b1;
                     controller_state <= WAIT_DRDY;
                 end
             end
 
             WAIT_DRDY: begin
-                if (xadc_eoc) begin
+                if (xadc_eoc_rise) begin
                     xadc_fault <= 1'b1;
                 end
 

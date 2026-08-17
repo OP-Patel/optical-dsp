@@ -42,10 +42,21 @@ directive, which retains standard cleanup and omits that optional pass. The
 result then completed placement, routing, timing analysis, DRC, and bitstream
 generation successfully.
 
-## Physical evidence still required
+## Physical verification
 
-- Program the prepared image.
-- Capture grounded A0 and one known DC level.
-- Save each decoded capture as CSV with `host/capture_samples.py`.
-- Record code statistics and confirm exactly 1,024 consecutive sample indices.
+Physical verification passed on 2026-08-17. The host decoder accepted and saved
+both CRC-protected packets with exactly 1,024 consecutive sample indices.
 
+| Input | Start index | Minimum | Maximum | Mean | Evidence |
+|---|---:|---:|---:|---:|---|
+| Board ground | 734452 | 11 | 16 | 13.2988 | `artifacts/captures/a0-ground.csv` |
+| Nominal board 3V3 | 6267218 | 4067 | 4074 | 4070.5381 | `artifacts/captures/a0-3v3.csv` |
+
+The grounded file SHA-256 is
+`BCEAF3CF32A2BA3EA0FD6C489B34B1A7423EA49EDD49096C40FF858295FE8EC4`.
+The nominal-3V3 file SHA-256 is
+`05739C72C1719DD3CC0F5C481424092FFE87BAE982B16F7106FAD080D0E9516B`.
+
+LD7 remained clear after the deliberate post-configuration BTN0 reset. The
+nominal board rail was not independently measured, so the result is a functional
+endpoint check rather than precision voltage calibration.

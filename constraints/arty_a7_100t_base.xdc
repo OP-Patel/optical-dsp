@@ -20,3 +20,4 @@ set_property -dict {PACKAGE_PIN D9 IOSTANDARD LVCMOS33} \
 #   optical_tx_bringup_top.xdc
 #   xadc_bringup_top.xdc
 #   capture_uart_bringup_top.xdc
+#   bpw34_characterization_top.xdc

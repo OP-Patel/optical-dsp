@@ -464,6 +464,11 @@ Do not version-control:
 
 ## 7. Development milestones and exit gates
 
+Current position (2026-08-17): Milestones 01 through 07 are complete. The
+ground and nominal-board-3V3 A0 captures passed CRC and sample-integrity checks.
+Milestone 08 implementation and automated build evidence are ready; BPW34
+physical characterization remains pending.
+
 The executable roadmap is the
 [14-step learning milestone index](milestones/README.md). Each guide is sized
 for roughly one or two focused workdays and contains learning goals, permanent

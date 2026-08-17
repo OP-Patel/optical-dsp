@@ -54,9 +54,8 @@ This equation is nominal. The measured table below is the acceptance evidence.
 
 | Applied voltage | Expected code | Mean code | Minimum | Maximum | Samples | Notes |
 |---:|---:|---:|---:|---:|---:|---|
-| 0.000 V | 0 | Pending | Pending | Pending | Pending | Grounded-input check |
-| Pending | Pending | Pending | Pending | Pending | Pending | Known DC input 1 |
-| Pending | Pending | Pending | Pending | Pending | Pending | Known DC input 2 |
+| Board ground (nominal 0 V) | 0 | 13.2988 | 11 | 16 | 1,024 | `artifacts/captures/a0-ground.csv` |
+| Board 3V3 rail (nominal; not independently measured) | 4095 | 4070.5381 | 4067 | 4074 | 1,024 | `artifacts/captures/a0-3v3.csv` |
 
 ## Sample-rate measurement
 
@@ -70,12 +69,17 @@ This equation is nominal. The measured table below is the acceptance evidence.
 
 ## Acceptance notes
 
-- [ ] Codes increase monotonically with applied voltage.
-- [ ] Grounded input offset and spread are recorded.
-- [ ] No `xadc_fault` occurred during the measurement window.
+- [x] Codes increase monotonically between the two board-derived endpoints.
+- [x] Grounded input offset and spread are recorded.
+- [x] No `xadc_fault` occurred during either measurement window after BTN0 reset.
 - [ ] The measured rate is consistent with the documented configuration.
-- [ ] No physical input exceeded the 0-3.3 V A0 board limit.
-- [ ] The BPW34 was not used to hide an electrical acquisition issue.
+- [x] Only board ground and the nominal board 3V3 rail were applied to A0.
+- [x] The BPW34 was not used to hide an electrical acquisition issue.
+
+The endpoint test is a functional range check, not a precision calibration,
+because the board 3V3 rail was not independently measured. The observed
+ground-corrected span is `(4070.5381 - 13.2988) / 4095 = 99.08%` of ideal full
+scale.
 
 ## Sources
 

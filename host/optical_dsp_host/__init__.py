@@ -11,6 +11,18 @@ from .protocol import (
     decode_packet,
     encode_packet,
 )
+from .analysis import (
+    ADC_MAX_CODE,
+    NOMINAL_SAMPLE_RATE_HZ,
+    CaptureStatistics,
+    LevelComparison,
+    TransitionStatistics,
+    compare_levels,
+    estimate_transition_samples,
+    load_capture_csv,
+    summarize_capture,
+    summarize_capture_file,
+)
 
 __all__ = [
     "CAPTURE_PACKET_TYPE",
@@ -24,4 +36,14 @@ __all__ = [
     "decode_capture_payload",
     "decode_packet",
     "encode_packet",
+    "ADC_MAX_CODE",
+    "NOMINAL_SAMPLE_RATE_HZ",
+    "CaptureStatistics",
+    "LevelComparison",
+    "TransitionStatistics",
+    "compare_levels",
+    "estimate_transition_samples",
+    "load_capture_csv",
+    "summarize_capture",
+    "summarize_capture_file",
 ]

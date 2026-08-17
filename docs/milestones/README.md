@@ -1,5 +1,9 @@
 # Learning milestone index
 
+Current position (2026-08-17): Milestones 01 through 07 are complete, including
+the physical A0 endpoint test. Milestone 08 has a routed characterization image
+and host analysis tooling; its BPW34 measurements are the next manual task.
+
 This directory is the implementation path for the project. The milestones are
 ordered so that each new block has a stable interface, can be tested without
 the entire system, and remains useful in the finished design. You write the RTL,

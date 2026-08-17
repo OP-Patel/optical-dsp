@@ -42,6 +42,14 @@ wrapper invokes Vivado in batch mode; the Vivado IDE is not required.
 # Program the already-built Milestone 07 image.
 .\scripts\fpga.cmd program `
   -Bitstream artifacts\bitstreams\capture_uart_bringup_top.bit
+
+# Build the combined Milestone 08 laser/XADC/capture image.
+.\scripts\fpga.cmd build `
+  -BuildScript scripts\build_bpw34_characterization.tcl
+
+# Program the already-built Milestone 08 image.
+.\scripts\fpga.cmd program `
+  -Bitstream artifacts\bitstreams\bpw34_characterization_top.bit
 ```
 
 `build-program` completes the batch build first and contacts hardware only if

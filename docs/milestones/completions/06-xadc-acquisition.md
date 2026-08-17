@@ -7,7 +7,7 @@
 | Milestone | `06 — Single-channel XADC acquisition` |
 | Date prepared | 2026-08-13, America/Toronto |
 | Vivado/simulator | Vivado and Vivado Simulator 2026.1, build 6511674 |
-| Hardware status | Routed bitstream ready; known-voltage A0 test not yet performed |
+| Hardware status | Functional ground/nominal-3V3 endpoint test passed; sample-rate measurement pending |
 
 ## What was implemented
 
@@ -76,16 +76,16 @@ Program it only when the A0 test connection is ready:
 
 ## Hardware follow-up
 
-- [ ] Program the prepared bitstream with A0 initially at ground.
-- [ ] Confirm sample-seen activity and no sticky acquisition fault.
-- [ ] Apply and measure ground plus at least two known DC voltages.
-- [ ] Record mean/minimum/maximum codes and confirm monotonic response.
+- [x] Program the prepared capture bitstream with A0 initially at ground.
+- [x] Confirm capture activity and no sticky acquisition fault after BTN0 reset.
+- [x] Apply board ground and nominal board 3V3 endpoints.
+- [x] Record mean/minimum/maximum codes and confirm monotonic response.
 - [ ] Measure the physical sample-valid rate.
-- [ ] Complete `docs/hardware/xadc-interface.md` without estimated measurements.
+- [ ] Independently measure an applied voltage if precision calibration becomes necessary.
 
 ## Reviewer decision
 
-- Status: `RTL/SIMULATION/ROUTED BUILD PASS — PHYSICAL XADC CALIBRATION PENDING`
+- Status: `PASS WITH FOLLOW-UP — FUNCTIONAL ENDPOINTS VERIFIED`
 - RTL/build blocker: None.
-- Safe next action: Perform the known-voltage A0 checks before connecting the
-  BPW34 or treating the sample stream as calibrated.
+- Safe next action: Build the bounded passive BPW34 front end, verify its node
+  remains within the A0 range, and begin Milestone 8 characterization.

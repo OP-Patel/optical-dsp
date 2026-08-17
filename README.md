@@ -12,8 +12,10 @@ hand-write and explain the RTL, testbenches, and host tools. The
 repository documentation supplies small interface contracts, design context,
 hints, and verification targets rather than completed project logic.
 
-The repository is currently in **planning and hardware bring-up preparation**;
-no optical-link or DSP RTL has been implemented.
+Milestones 01 through 07 are complete. The project has a physically verified
+laser transmitter, XADC endpoint captures, a bounded capture RAM, packet/CRC
+transport, and a Python CSV receiver. Milestone 08 BPW34 characterization is
+the current work.
 
 ## Start here
 
@@ -143,8 +145,32 @@ selection and part verification to a batch Tcl script. See
   and the Arty A7 XADC.
 - [x] Fourteen cumulative learning milestones defined with verification gates.
 - [x] Terminal-only FPGA programming wrapper prepared.
-- [ ] Delivered hardware inspected and electrically characterized.
+- [x] Milestone 07 endpoint test passed with 1,024-sample ground and nominal
+  board-3V3 captures, valid CRC, and consecutive sample indices.
+- [x] Milestone 08 combined transmitter/capture image and labeled host tools
+  built and passed automated checks.
+- [ ] BPW34 devices, resistance, and physical geometry characterized.
 - [ ] Final wiring and measured rate profiles frozen.
 
 No benchmark result is reported as achieved until its evidence and exit
 criteria in the project plan have been satisfied on physical hardware.
+
+The next manual session uses the combined Milestone 08 image:
+
+```powershell
+.\scripts\fpga.cmd build `
+    -BuildScript scripts\build_bpw34_characterization.tcl
+
+.\scripts\fpga.cmd program `
+    -Bitstream artifacts\bitstreams\bpw34_characterization_top.bit
+
+python -m pip install pyserial
+python host\characterize_bpw34.py capture COM5 `
+    --detector pd01 --resistor-ohms 10000 `
+    --condition off --rate 0 --run 1
+```
+
+Replace `COM5` with the Arty USB-UART port. The capture command prints the
+required switch positions before it waits for BTN1 (arm) and BTN2 (trigger).
+See the [Milestone 08 guide](docs/milestones/08-bpw34-analog-link.md) for the
+wiring and complete physical test matrix.
