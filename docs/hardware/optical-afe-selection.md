@@ -41,9 +41,10 @@ CSV/JSON evidence; do not select a configuration from appearance alone.
 
 | Detector | Resistance | OFF mean/std | ON mean/std | Separation | Quality | 1 kbit/s rise/fall | 10 kbit/s rise/fall | Clipping | Evidence |
 |---|---:|---|---|---:|---:|---|---|---|---|
-| Pending | 4.7 kΩ | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| Pending | 1 kΩ | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| Pending | 2 kΩ | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 | Pending | 10 kΩ | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
-| Pending | 47 kΩ | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
+| Pending | 100 kΩ | Pending | Pending | Pending | Pending | Pending | Pending | Pending | Pending |
 
 Values not physically available may be removed with a note rather than
 inventing measurements.

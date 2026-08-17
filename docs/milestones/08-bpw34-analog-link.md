@@ -182,7 +182,8 @@ cleanest trace. Compare the five OFF/ON pairs and select the best two based on:
 ## Phase B — resistor and rate sweep
 
 For the best two devices, test only resistor values already available. The
-suggested limited set is 4.7 kΩ, 10 kΩ, and 47 kΩ. At each value collect:
+available set is 1 kΩ, 2 kΩ, 10 kΩ, and 100 kΩ. Keep 10 kΩ as the first
+baseline. At each value collect:
 
 1. OFF DC.
 2. ON DC.
@@ -194,6 +195,11 @@ Higher resistance may increase separation but slow transitions or clip. Lower
 resistance may improve transition speed but reduce separation. Freeze the
 smallest/simplest value that keeps distinct levels and adequate transition
 margin at 10 kbit/s.
+
+Use this practical order: test 10 kΩ first, then 100 kΩ if the ON/OFF
+separation is too small. If 10 kΩ clips or its 10 kbit/s transitions are too
+slow, try 2 kΩ and then 1 kΩ. The 100 kΩ result is still useful even if it is
+rejected for clipping or slow edges; keep its capture as evidence.
 
 ## Phase C — repeatability
 

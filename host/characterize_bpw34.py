@@ -28,6 +28,7 @@ CONDITIONS = (
     "blocked",
     "misaligned",
 )
+AVAILABLE_RESISTORS_OHMS = (1000, 2000, 10000, 100000)
 
 
 def expected_switches(condition: str, rate_bps: int) -> tuple[int, int, int, int]:
@@ -260,7 +261,12 @@ def build_parser() -> argparse.ArgumentParser:
     capture_parser = subparsers.add_parser("capture", help="receive one labeled capture")
     capture_parser.add_argument("port", help="serial port, for example COM5")
     capture_parser.add_argument("--detector", required=True, help="local ID, for example pd01")
-    capture_parser.add_argument("--resistor-ohms", required=True, type=int)
+    capture_parser.add_argument(
+        "--resistor-ohms",
+        required=True,
+        type=int,
+        choices=AVAILABLE_RESISTORS_OHMS,
+    )
     capture_parser.add_argument("--condition", required=True, choices=CONDITIONS)
     capture_parser.add_argument("--rate", type=int, choices=(0, 1000, 10000), default=0)
     capture_parser.add_argument("--run", type=int, default=1)
