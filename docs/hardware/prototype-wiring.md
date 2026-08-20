@@ -19,18 +19,21 @@ middle pin unconnected. Loaded voltage/current measurements remain pending.
 | BPW34 cathode | Arty 3V3, provisionally JA12 | Reverse-bias supply |
 | BPW34 anode | Sense node | Photocurrent output; not connected directly to ground |
 | Sense node | Arty A0 | XADC measurement input |
-| Load resistor | Sense node to Arty GND | Start with 10 kΩ |
+| Load resistor | Sense node to Arty GND | Selected external value: 100 kΩ |
 | Grounds | Arty/KY-008/resistor common | One reference for transmitter and receiver |
 
 ```text
 3V3 -------- cathode BPW34 anode ----+---- A0
                                      |
-                                   10 kΩ
+                                  100 kΩ
                                      |
 GND ---------------------------------+
 ```
 
-The five purchased detectors must be assigned local IDs `pd01` through `pd05`.
-Their orientation is not frozen until Milestone 08 measurements confirm that
-the sense voltage rises under illumination. Never substitute 5V or VU for the
-3V3 bias.
+Milestone 08 selected `pd02`. The transmitter and detector are separated by
+7.4 cm and mounted approximately 2 cm above the supporting surface in direct
+line of sight. The official Arty A0 2.32 kΩ/1 kΩ input divider dominates the
+effective load, so the external 100 kΩ resistor only minimally loads it.
+
+Illumination produced a repeatable positive sense-code change, confirming the
+recorded polarity. Never substitute 5V or VU for the 3V3 bias.

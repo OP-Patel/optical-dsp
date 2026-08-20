@@ -32,6 +32,17 @@ For balanced OOK, the running mean lies near the midpoint rather than the laser-
 off level. That is acceptable: the output becomes roughly bipolar, which is
 useful for filtering and a near-zero threshold.
 
+## Measured Milestone 08 input contract
+
+The selected physical receiver is `pd02` with a 100 kΩ external load at 7.4 cm
+distance. Ten DC pairs measured aggregate OFF/ON means of 13.660 and 16.086
+codes. Ten 10 kbit/s captures recovered a mean 2.390-code alternating
+separation with approximately 24.038 samples/symbol and no rail clipping.
+
+These values define the nominal test case, but this block must still handle the
+entire unsigned 12-bit range safely. Do not reduce the datapath width merely
+because the first passive receiver operates near code 15.
+
 ## Permanent modules to write
 
 ```text

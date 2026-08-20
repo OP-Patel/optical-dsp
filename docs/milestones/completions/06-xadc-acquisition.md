@@ -1,4 +1,4 @@
-# Milestone 06 partial completion report
+# Milestone 06 completion report
 
 ## Identity
 

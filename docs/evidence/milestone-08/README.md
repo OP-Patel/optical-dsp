@@ -1,8 +1,8 @@
-# Milestone 08 prepared evidence
+# Milestone 08 evidence
 
-Prepared on 2026-08-17 with Vivado and Vivado Simulator 2026.1. This records
-the completed implementation and automated checks. BPW34 physical measurements
-are intentionally still pending.
+Automated evidence was prepared on 2026-08-17 with Vivado and Vivado Simulator
+2026.1. Physical BPW34 characterization was completed on 2026-08-19,
+America/Toronto, with one explicit repeatability follow-up.
 
 ## Implemented test path
 
@@ -46,7 +46,24 @@ Build evidence:
 
 ## Physical status
 
-`PENDING` - no BPW34 result is claimed yet. Follow the measurement matrix in
-`docs/milestones/08-bpw34-analog-link.md` and record the selected detector,
-resistor, geometry, raw evidence, and rejected alternatives in
-`docs/hardware/optical-afe-selection.md`.
+`PASS WITH FOLLOW-UP`
+
+| Item | Accepted result |
+|---|---|
+| Detector | `pd02` selected over `pd01` |
+| External load | 100 kΩ; effective load dominated by the onboard A0 divider |
+| Geometry | 7.4 cm separation; transmitter and detector approximately 2 cm above the supporting surface |
+| DC evidence | Ten OFF and ten ON captures; aggregate means 13.660 and 16.086 codes |
+| DC separation | 2.425 codes; every paired run positive, range 2.054–2.652 |
+| 1 kbit/s | PASS; ten captures, mean fitted separation 2.527 codes |
+| 10 kbit/s | PASS; ten captures, 42–43 fitted transitions each, mean separation 2.390 codes |
+| Blocked path | PASS; fitted separation fell to 0.176 codes, a 92.6% reduction |
+| Integrity | Every packet passed CRC; every capture contained 1,024 consecutive samples; no rail clipping |
+
+The accepted raw evidence is under
+`artifacts/captures/milestone-08/`. Detailed values and the selected wiring are
+in `docs/hardware/optical-afe-selection.md`.
+
+The setup was not dismantled and rebuilt three times. That mechanical
+realignment test, exact room-light description, and beam-stop record remain
+qualification follow-ups and are not claimed as completed.

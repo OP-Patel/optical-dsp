@@ -101,9 +101,10 @@ powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts\fpga.ps1 `
 
 ## Reviewer decision
 
-- Status: `PHYSICAL TRANSMITTER FUNCTIONAL TEST PASS — ELECTRICAL AND RECEIVER EVIDENCE PENDING`
+- Status: `PASS WITH FOLLOW-UP — PHYSICAL TRANSMITTER FUNCTIONAL TEST VERIFIED`
 - RTL/build blocker: None.
-- Safe next action: Record the remaining electrical measurements and DAOKI
-  receiver evidence without changing the confirmed KY-008 wiring.
-- Safe next milestone: Milestone 06 only after this report's hardware items are
-  recorded and the Milestone 05 exit checklist is complete.
+- Follow-up: Record loaded KY-008 voltage/current and any remaining DAOKI
+  receiver evidence during final electrical qualification without changing the
+  confirmed wiring.
+- Milestone progression: Accepted; Milestones 06–08 subsequently passed their
+  functional gates.

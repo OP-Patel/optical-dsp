@@ -12,10 +12,10 @@ hand-write and explain the RTL, testbenches, and host tools. The
 repository documentation supplies small interface contracts, design context,
 hints, and verification targets rather than completed project logic.
 
-Milestones 01 through 07 are complete. The project has a physically verified
-laser transmitter, XADC endpoint captures, a bounded capture RAM, packet/CRC
-transport, and a Python CSV receiver. Milestone 08 BPW34 characterization is
-the current work.
+Milestones 01 through 08 are complete, with documented measurement follow-ups.
+The project has a physically verified laser transmitter and BPW34 analog path,
+XADC endpoint captures, a bounded capture RAM, packet/CRC transport, and a
+Python CSV receiver. Milestone 09 fixed-point DC removal is the current work.
 
 ## Start here
 
@@ -50,7 +50,7 @@ the current work.
 | Optical transmitter | DAOKI kit's KY-008-style 650 nm, nominal 5 mW laser module | Low-cost OOK source. Its actual pinout, current, switching bandwidth, and optical classification must be measured or verified after arrival. |
 | First receiver | DAOKI non-modulated digital laser receiver module | Alignment, beam interruption, and very-low-rate digital bring-up only. Its comparator output is not an analog waveform and cannot demonstrate receive DSP. |
 | DSP receiver | Amazon five-pack of through-hole BPW34/BPW34S-style silicon PIN photodiodes | Analog light detector for the XADC path. The seller is not Vishay, so the devices are treated as unverified BPW34-compatible parts and characterized before benchmarking. |
-| Initial analog front end | BPW34-style detector, 3.3 V reverse bias, and 10 kΩ load resistor | Cheapest first experiment. Resistor values may be swept after measuring signal swing and bandwidth; a transimpedance amplifier is an optional later upgrade. |
+| Selected analog front end | `pd02` BPW34-style detector, 3.3 V reverse bias, and 100 kΩ external load | The Arty A0 divider dominates the effective load. The fixed 7.4 cm path passed repeated 1 and 10 kbit/s captures. |
 | Laser control | KY-008 `S` supply/control pin driven by an Arty LVCMOS33 GPIO | This delivered variant uses `S` and ground while its middle pin is unused. Functional direct drive is confirmed; loaded voltage and GPIO current still require measurement. |
 
 Selected purchase listings:
@@ -88,8 +88,8 @@ integrity, and BER run meet the project-plan criteria.
    establish safe alignment and beam-block detection.
 3. Measure the KY-008 `S` input, then prove slow FPGA-controlled OOK through
    that control input without sourcing laser power from the GPIO.
-4. Characterize all supplied BPW34-style devices with a 10 kΩ load, then verify
-   the sense node stays within 0-3.3 V before connecting it to Arty A0.
+4. Compare BPW34-style devices on the passive A0 path, select one from saved
+   evidence, and verify the sense codes remain away from both rails.
 5. Capture dark, laser-off, laser-on, transition, and deliberately misaligned
    XADC samples before implementing the receive DSP.
 6. Qualify 1 kbit/s first, then 10 kbit/s. Attempt 25 kbit/s only as a measured
@@ -149,28 +149,16 @@ selection and part verification to a batch Tcl script. See
   board-3V3 captures, valid CRC, and consecutive sample indices.
 - [x] Milestone 08 combined transmitter/capture image and labeled host tools
   built and passed automated checks.
-- [ ] BPW34 devices, resistance, and physical geometry characterized.
-- [ ] Final wiring and measured rate profiles frozen.
+- [x] `pd02`, 100 kΩ external load, and 7.4 cm geometry selected from physical
+  1 and 10 kbit/s captures.
+- [x] Blocking the beam removed 92.6% of the fitted 10 kbit/s pattern.
+- [ ] Rebuild-from-scratch mechanical realignment repeated three times during
+  final qualification.
 
 No benchmark result is reported as achieved until its evidence and exit
 criteria in the project plan have been satisfied on physical hardware.
 
-The next manual session uses the combined Milestone 08 image:
-
-```powershell
-.\scripts\fpga.cmd build `
-    -BuildScript scripts\build_bpw34_characterization.tcl
-
-.\scripts\fpga.cmd program `
-    -Bitstream artifacts\bitstreams\bpw34_characterization_top.bit
-
-python -m pip install pyserial
-python host\characterize_bpw34.py capture COM5 `
-    --detector pd01 --resistor-ohms 10000 `
-    --condition off --rate 0 --run 1
-```
-
-Replace `COM5` with the Arty USB-UART port. The capture command prints the
-required switch positions before it waits for BTN1 (arm) and BTN2 (trigger).
-See the [Milestone 08 guide](docs/milestones/08-bpw34-analog-link.md) for the
-wiring and complete physical test matrix.
+The accepted analog selection and limitations are in
+[the Milestone 08 completion report](docs/milestones/completions/08-bpw34-analog-link.md).
+The next implementation step is
+[Milestone 09 fixed-point DC removal](docs/milestones/09-dc-removal.md).

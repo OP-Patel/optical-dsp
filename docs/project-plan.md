@@ -336,18 +336,18 @@ external switch or buffer must be reconsidered.
 Arty 3.3 V -------- BPW34 cathode
 BPW34 anode --------+---- Arty A0
                     |
-                   10 kΩ
+                  100 kΩ
                     |
 Arty GND -----------+
 ```
 
-This reverse-biased photodiode/load circuit should produce a positive sense
-voltage that rises with received light and is bounded by the 3.3 V bias. Start
-with 10 kΩ; characterize lower values for bandwidth/headroom and higher values
-for sensitivity. Verify polarity, dark voltage, full-illumination voltage, and
-transition shape before connecting A0. If the passive circuit cannot provide
-both adequate swing and bandwidth, add a documented transimpedance amplifier
-rather than silently changing the benchmark profile.
+Milestone 08 selected `pd02` and a 100 kΩ external load. The official Arty A0
+2.32 kΩ/1 kΩ divider dominates the effective load, explaining why an external
+resistor sweep produced only a small change. The reverse-biased circuit
+produced a positive sense-code response, passed repeated 1 and 10 kbit/s
+captures at 7.4 cm, and remained away from both ADC rails. If later benchmarks
+show inadequate margin, add a documented transimpedance amplifier rather than
+silently changing the benchmark profile.
 
 For the DAOKI digital receiver, first observe the output without the Arty. If a
 5 V high is measured, use a divider or level shifter whose worst-case output is
@@ -464,10 +464,12 @@ Do not version-control:
 
 ## 7. Development milestones and exit gates
 
-Current position (2026-08-17): Milestones 01 through 07 are complete. The
-ground and nominal-board-3V3 A0 captures passed CRC and sample-integrity checks.
-Milestone 08 implementation and automated build evidence are ready; BPW34
-physical characterization remains pending.
+Current position (2026-08-19): Milestones 01 through 08 are complete with
+documented follow-ups. Milestone 08 selected `pd02`, a 100 kΩ external load,
+and a fixed 7.4 cm geometry. Repeated 1 and 10 kbit/s captures passed, and
+blocking the beam removed 92.6% of the fitted pattern. Rebuild-from-scratch
+mechanical realignment remains a final-qualification follow-up. Milestone 09
+fixed-point DC removal is next.
 
 The executable roadmap is the
 [14-step learning milestone index](milestones/README.md). Each guide is sized

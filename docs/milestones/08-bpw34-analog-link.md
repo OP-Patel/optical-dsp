@@ -14,6 +14,13 @@ uses that same path to screen the five BPW34-style detectors and choose one
 passive receiver configuration. This is measurement and selection work, not a
 new DSP design.
 
+Final status (2026-08-19): `PASS WITH FOLLOW-UP`. The selected configuration is
+`pd02`, a 100 kΩ external load, 7.4 cm transmitter-to-detector separation, and
+both devices mounted approximately 2 cm above the supporting surface. Repeated
+stationary 1 and 10 kbit/s training passed. A blocked-path capture removed
+92.6% of the fitted 10 kbit/s pattern. Rebuild-from-scratch realignment remains
+a documented follow-up.
+
 ## Starting circuit
 
 ```text
@@ -159,7 +166,7 @@ It also estimates 10–90% rising and falling transition times from each supplie
 training capture. This is a relative engineering metric, not calibrated optical
 SNR.
 
-## Phase A — screen all five detectors
+## Phase A — select the detector
 
 Keep the distance, alignment fixture, 10 kΩ resistor, room lighting, capture
 length, and KY-008 unchanged. For each `pd01` through `pd05`, collect:
@@ -171,7 +178,9 @@ length, and KY-008 unchanged. For each `pd01` through `pd05`, collect:
 5. `training`: aligned alternating laser at 1 kbit/s.
 
 Use a unique detector and run number in every command. Do not retain only the
-cleanest trace. Compare the five OFF/ON pairs and select the best two based on:
+cleanest trace. The operator compared `pd01` and `pd02` and selected `pd02`
+after ten paired OFF/ON runs. The remaining devices need to be screened only if
+the selected device fails the rate tests. Base selection on:
 
 - positive, repeatable ON/OFF separation;
 - low pooled noise;
@@ -179,11 +188,25 @@ cleanest trace. Compare the five OFF/ON pairs and select the best two based on:
 - clean 1 kbit/s transitions; and
 - low sensitivity to small realignment.
 
-## Phase B — resistor and rate sweep
+## Phase B — effective load and rate check
 
-For the best two devices, test only resistor values already available. The
-available set is 1 kΩ, 2 kΩ, 10 kΩ, and 100 kΩ. Keep 10 kΩ as the first
-baseline. At each value collect:
+The [official Arty A7 schematic](https://digilent.com/reference/_media/programmable-logic/arty-a7/arty-a7-e2-sch.pdf)
+shows that each chipKIT analog input is already scaled by a 2.32 kΩ/1 kΩ
+network. Seen from external A0, this creates an
+approximately 3.32 kΩ DC path to ground before any external load is added. An
+external load therefore appears in parallel with the board network:
+
+```text
+10 kΩ || 3.32 kΩ  = approximately 2.49 kΩ
+100 kΩ || 3.32 kΩ = approximately 3.21 kΩ
+```
+
+This explains why the measured 10 kΩ-to-100 kΩ change was much smaller than a
+tenfold change. Use 100 kΩ for the remaining passive tests because it disturbs
+the onboard load least. Do not spend time testing the available 1 kΩ and 2 kΩ
+parts; both reduce the effective load and expected signal.
+
+For the selected detector collect:
 
 1. OFF DC.
 2. ON DC.
@@ -191,17 +214,11 @@ baseline. At each value collect:
 4. TRAINING at 10 kbit/s (`SW3=1`).
 5. One blocked-path and one repeatable misalignment capture.
 
-Higher resistance may increase separation but slow transitions or clip. Lower
-resistance may improve transition speed but reduce separation. Freeze the
-smallest/simplest value that keeps distinct levels and adequate transition
-margin at 10 kbit/s.
+The external resistor is no longer treated as the main transimpedance element.
+If every detector remains weak, document the passive A0 path as the measured
+limitation rather than continuing an ineffective resistor sweep.
 
-Use this practical order: test 10 kΩ first, then 100 kΩ if the ON/OFF
-separation is too small. If 10 kΩ clips or its 10 kbit/s transitions are too
-slow, try 2 kΩ and then 1 kΩ. The 100 kΩ result is still useful even if it is
-rejected for clipping or slow edges; keep its capture as evidence.
-
-## Phase C — repeatability
+## Phase C — rebuild repeatability follow-up
 
 For the selected detector, resistor, distance, and lighting policy:
 
@@ -211,7 +228,9 @@ For the selected detector, resistor, distance, and lighting policy:
 4. Repeat the realignment and capture sequence three times.
 
 Record all three runs in `docs/hardware/optical-afe-selection.md` and freeze the
-geometry only if they remain consistent.
+geometry only if they remain consistent. This procedure was not completed in
+the Milestone 08 session and is carried forward as a qualification follow-up;
+it is not reported as performed.
 
 ## Safety and acceptance
 
@@ -227,12 +246,17 @@ geometry only if they remain consistent.
 
 ## Done when
 
-- [ ] All available detectors were screened consistently.
-- [ ] One detector/load/geometry is frozen for V1.
-- [ ] 10 kbit/s training transitions were captured without unsafe voltage or
+- [x] At least two detectors were compared consistently and one was selected.
+- [x] The selected detector produced a repeatable 1 kbit/s alternating pattern.
+- [x] Blocking the path removed the fitted 10 kbit/s optical pattern.
+- [x] One detector/load/geometry is frozen for V1.
+- [x] 10 kbit/s training transitions were captured without unsafe voltage or
   unexplained clipping.
-- [ ] Nominal and degraded conditions were repeated three times.
-- [ ] `docs/hardware/optical-afe-selection.md` is complete enough to rebuild
+- [x] Nominal conditions were repeated ten times at both rates and one blocked
+  degraded capture was retained.
+- [ ] The setup was rebuilt and realigned from scratch three times; deferred to
+  final qualification.
+- [x] `docs/hardware/optical-afe-selection.md` is complete enough to rebuild
   the circuit.
 
 ## Scope guard

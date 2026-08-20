@@ -1,8 +1,9 @@
 # Learning milestone index
 
-Current position (2026-08-17): Milestones 01 through 07 are complete, including
-the physical A0 endpoint test. Milestone 08 has a routed characterization image
-and host analysis tooling; its BPW34 measurements are the next manual task.
+Current position (2026-08-19): Milestones 01 through 08 are complete with
+documented follow-ups. The selected receiver is `pd02` with a 100 kΩ external
+load at 7.4 cm. Repeated 1 and 10 kbit/s training and a blocked-path test passed.
+Milestone 09 fixed-point DC removal is next.
 
 This directory is the implementation path for the project. The milestones are
 ordered so that each new block has a stable interface, can be tested without
