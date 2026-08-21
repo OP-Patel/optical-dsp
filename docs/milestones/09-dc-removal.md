@@ -32,6 +32,37 @@ For balanced OOK, the running mean lies near the midpoint rather than the laser-
 off level. That is acceptable: the output becomes roughly bipolar, which is
 useful for filtering and a near-zero threshold.
 
+## Frozen implementation contract
+
+The baseline implementation uses `K=10` and ten fractional estimate bits. At
+the measured `240384.615` sample/s rate, one estimator time constant is about
+`1023.5` samples or `4.258 ms`. Five time constants are about `21.29 ms`; the
+conservative full-range bring-up wait is `40 ms` after reset.
+
+| Quantity | Representation | Numeric range |
+|---|---|---:|
+| XADC input | unsigned 12-bit integer | 0 to 4095 |
+| Input in estimator units | signed 23-bit Q12.10 | 0 to 4,193,280 |
+| DC estimate | unsigned 22-bit Q12.10 | 0 to 4,193,280 |
+| Estimator error | signed 23-bit Q12.10 | -4,193,280 to +4,193,280 |
+| Estimate update | signed 23-bit Q12.10 | -4095 to +4095 |
+| Next-estimate check | signed 24-bit Q12.10 | guard bit prevents wrap |
+| Centered output | signed 13-bit integer | -4095 to +4095 |
+| Debug estimate | unsigned 12-bit integer | 0 to 4095 |
+
+The estimate update is an arithmetic right shift. This means a negative update
+rounds toward negative infinity, which is bit-exact and avoids an unsigned
+conversion. The centered output is independently rounded to nearest, with a
+half-code rounded away from zero. It is calculated from the pre-update estimate
+and registered, so `out_valid` and `out_sample` appear one system-clock cycle
+after the matching `in_valid`/`in_sample`. Invalid input clocks do not update any
+filter state.
+
+An out-of-range next estimate saturates to 0 or full scale and raises the sticky
+`estimate_fault`. The legal 12-bit input sequences in the unit test never raise
+that fault. `clear_estimate` resets the estimate, output-valid state, and fault;
+`freeze_estimate` holds the estimate while centered samples continue.
+
 ## Measured Milestone 08 input contract
 
 The selected physical receiver is `pd02` with a 100 kΩ external load at 7.4 cm
@@ -47,7 +78,7 @@ because the first passive receiver operates near code 15.
 
 ```text
 rtl/dsp/dc_removal.sv
-sim/tb/tb_dc_removal.sv
+rtl/tb/tb_dc_removal.sv
 ```
 
 Suggested interface:
@@ -135,6 +166,30 @@ Verify:
 - the centered long-term mean is near zero after warm-up;
 - no clipping/saturation flag appears; and
 - blocking/unblocking the beam produces a documented transient and recovery.
+
+### Milestone 09 bring-up controls
+
+The separate `dc_removal_bringup_top` keeps the accepted Milestone 08 image
+unchanged. BTN3 cycles the requested capture source while the capture path is
+idle. RGB LED0 identifies the source: red is raw XADC, green is the rounded DC
+estimate, and blue is centered output. BTN1 latches that choice and arms the
+capture; BTN2 triggers it. A BTN3 press while armed, capturing, or streaming is
+rejected and lights the fault LED.
+
+BTN0 resets and therefore clears the estimator. The standalone block's
+`freeze_estimate` control is verified in simulation but tied low in this
+bring-up top; no extra physical switch is consumed for it.
+
+Centered samples are transported through the existing unsigned 12-bit packet
+as offset binary. Decode every CSV `raw_code` with:
+
+```text
+centered_signed = raw_code - 2048
+```
+
+Values outside the packet's -2048 to +2047 diagnostic range saturate and set
+the sticky fault LED for that capture. This affects only the diagnostic copy; the permanent signed
+13-bit DSP output retains its full -4095 to +4095 range.
 
 ## Completion evidence
 

@@ -1,0 +1,15 @@
+Vivado Simulator 2026.1
+Date: 2026-08-19 America/Toronto
+
+Commands:
+  xvlog.bat --sv rtl/dsp/dc_removal.sv rtl/tb/tb_dc_removal.sv
+  xelab.bat tb_dc_removal -s tb_dc_removal_sim
+  xsim.bat tb_dc_removal_sim -runall
+
+Result:
+  PASS: tb_dc_removal checks=125395 K=10 fractional_bits=10
+
+Coverage includes constant zero, constant midscale, valid gaps, a 1000-to-3000
+step, alternating 1000/3000, estimator freeze, clear, a slow ramp, randomized
+idle gaps, and alternating 0/4095 extremes. Every valid output was checked
+against an independent long-integer fixed-point reference model.

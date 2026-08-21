@@ -50,6 +50,14 @@ wrapper invokes Vivado in batch mode; the Vivado IDE is not required.
 # Program the already-built Milestone 08 image.
 .\scripts\fpga.cmd program `
   -Bitstream artifacts\bitstreams\bpw34_characterization_top.bit
+
+# Build the Milestone 09 DC-removal diagnostic image.
+.\scripts\fpga.cmd build `
+  -BuildScript scripts\build_dc_removal_bringup.tcl
+
+# Program the already-built Milestone 09 image.
+.\scripts\fpga.cmd program `
+  -Bitstream artifacts\bitstreams\dc_removal_bringup_top.bit
 ```
 
 `build-program` completes the batch build first and contacts hardware only if

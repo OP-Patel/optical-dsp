@@ -1,8 +1,8 @@
 # FPGA optical DSP platform — project plan
 
 > **Document status:** Implementation-ready learning plan, revision 0.3
-> **Project status:** Pre-implementation; parts selected, arrival inspection and
-> electrical gates remain open
+> **Project status:** Milestone 09 automated implementation complete; physical
+> DC-removal captures remain open
 > **Primary target:** Digilent Arty A7-100T (`xc7a100tcsg324-1`)
 > **V1 emphasis:** Hand-written, explainable components; measurable receive DSP;
 > reproducible evidence; and a terminal-first workflow

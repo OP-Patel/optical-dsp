@@ -1,9 +1,10 @@
 # Learning milestone index
 
-Current position (2026-08-19): Milestones 01 through 08 are complete with
+Current position (2026-08-20): Milestones 01 through 08 are complete with
 documented follow-ups. The selected receiver is `pd02` with a 100 kΩ external
 load at 7.4 cm. Repeated 1 and 10 kbit/s training and a blocked-path test passed.
-Milestone 09 fixed-point DC removal is next.
+Milestone 09 fixed-point DC removal is implemented; bit-exact simulation and
+the routed build pass, and physical before/after captures remain.
 
 This directory is the implementation path for the project. The milestones are
 ordered so that each new block has a stable interface, can be tested without

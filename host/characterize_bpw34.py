@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import re
+import statistics as sample_statistics
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -29,6 +30,7 @@ CONDITIONS = (
     "misaligned",
 )
 AVAILABLE_RESISTORS_OHMS = (1000, 2000, 10000, 100000)
+CAPTURE_VIEWS = ("raw", "estimate", "centered")
 
 
 def expected_switches(condition: str, rate_bps: int) -> tuple[int, int, int, int]:
@@ -68,11 +70,13 @@ def capture_stem(
     condition: str,
     rate_bps: int,
     run_number: int,
+    capture_view: str = "raw",
 ) -> str:
     rate_label = "dc" if rate_bps == 0 else f"{rate_bps}bps"
+    view_label = "" if capture_view == "raw" else f"_{safe_label(capture_view)}"
     return (
         f"{safe_label(detector)}_r{resistor_ohms}ohm_"
-        f"{safe_label(condition)}_{rate_label}_run{run_number:02d}"
+        f"{safe_label(condition)}_{rate_label}{view_label}_run{run_number:02d}"
     )
 
 
@@ -99,6 +103,7 @@ def capture_command(args: argparse.Namespace) -> None:
         args.condition,
         args.rate,
         args.run,
+        args.capture_view,
     )
     output_directory = args.output_dir
     csv_path = output_directory / f"{stem}.csv"
@@ -114,6 +119,15 @@ def capture_command(args: argparse.Namespace) -> None:
         f"Expected switches: SW0={sw0} SW2={sw2} SW1={sw1} SW3={sw3} "
         f"({args.condition}, {'DC' if args.rate == 0 else f'{args.rate} bit/s'})"
     )
+    view_instructions = {
+        "raw": "red RGB0 (zero BTN3 presses after reset)",
+        "estimate": "green RGB0 (one BTN3 press after reset)",
+        "centered": "blue RGB0 (two BTN3 presses after reset)",
+    }
+    print(
+        f"Capture view: {args.capture_view}; select "
+        f"{view_instructions[args.capture_view]} before BTN1."
+    )
     print(f"Waiting on {args.port}. Press BTN1 to arm, then BTN2 to trigger.")
 
     with SerialTransport(args.port, timeout=args.timeout) as transport:
@@ -128,6 +142,18 @@ def capture_command(args: argparse.Namespace) -> None:
             statistics = summarize_capture(indices, capture.samples)
             write_capture_csv(csv_path, capture.start_index, capture.samples)
 
+            decoded_centered_statistics = None
+            if args.capture_view == "centered":
+                decoded_samples = tuple(sample - 2048 for sample in capture.samples)
+                decoded_centered_statistics = {
+                    "minimum": min(decoded_samples),
+                    "maximum": max(decoded_samples),
+                    "mean": sample_statistics.fmean(decoded_samples),
+                    "standard_deviation": sample_statistics.pstdev(decoded_samples),
+                    "saturated_low_count": sum(sample == 0 for sample in capture.samples),
+                    "saturated_high_count": sum(sample == 4095 for sample in capture.samples),
+                }
+
             metadata = {
                 "schema_version": 1,
                 "captured_utc": datetime.now(timezone.utc).isoformat(),
@@ -136,6 +162,12 @@ def capture_command(args: argparse.Namespace) -> None:
                 "condition": args.condition,
                 "rate_bps": args.rate,
                 "run": args.run,
+                "capture_view": args.capture_view,
+                "sample_encoding": (
+                    "signed_centered_plus_2048_saturated_to_u12"
+                    if args.capture_view == "centered"
+                    else "unsigned_u12"
+                ),
                 "distance_cm": args.distance_cm,
                 "ambient": args.ambient,
                 "notes": args.notes,
@@ -143,6 +175,7 @@ def capture_command(args: argparse.Namespace) -> None:
                 "packet_crc_valid": True,
                 "nominal_sample_rate_hz": NOMINAL_SAMPLE_RATE_HZ,
                 "statistics": statistics.to_dict(),
+                "decoded_centered_statistics": decoded_centered_statistics,
                 "csv_path": str(csv_path),
                 "csv_sha256": sha256_file(csv_path),
             }
@@ -159,6 +192,14 @@ def capture_command(args: argparse.Namespace) -> None:
                 f"consecutive={statistics.indices_consecutive}\n"
                 f"metadata={metadata_path}"
             )
+            if decoded_centered_statistics is not None:
+                print(
+                    "Decoded centered values use raw_code - 2048: "
+                    f"min={decoded_centered_statistics['minimum']} "
+                    f"max={decoded_centered_statistics['maximum']} "
+                    f"mean={decoded_centered_statistics['mean']:.3f} "
+                    f"std={decoded_centered_statistics['standard_deviation']:.3f}"
+                )
             return
 
 
@@ -254,7 +295,7 @@ def compare_command(args: argparse.Namespace) -> None:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="Capture and compare labeled Milestone 8 BPW34 measurements."
+        description="Capture and compare labeled BPW34 and DC-removal measurements."
     )
     subparsers = parser.add_subparsers(dest="command", required=True)
 
@@ -269,6 +310,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     capture_parser.add_argument("--condition", required=True, choices=CONDITIONS)
     capture_parser.add_argument("--rate", type=int, choices=(0, 1000, 10000), default=0)
+    capture_parser.add_argument(
+        "--capture-view",
+        choices=CAPTURE_VIEWS,
+        default="raw",
+        help="BTN3-selected FPGA diagnostic source",
+    )
     capture_parser.add_argument("--run", type=int, default=1)
     capture_parser.add_argument("--distance-cm", type=float)
     capture_parser.add_argument("--ambient", default="room")

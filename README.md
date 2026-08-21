@@ -15,7 +15,8 @@ hints, and verification targets rather than completed project logic.
 Milestones 01 through 08 are complete, with documented measurement follow-ups.
 The project has a physically verified laser transmitter and BPW34 analog path,
 XADC endpoint captures, a bounded capture RAM, packet/CRC transport, and a
-Python CSV receiver. Milestone 09 fixed-point DC removal is the current work.
+Python CSV receiver. Milestone 09 fixed-point DC removal is implemented and has
+passed automated verification; its physical before/after captures are next.
 
 ## Start here
 
@@ -152,6 +153,9 @@ selection and part verification to a batch Tcl script. See
 - [x] `pd02`, 100 kΩ external load, and 7.4 cm geometry selected from physical
   1 and 10 kbit/s captures.
 - [x] Blocking the beam removed 92.6% of the fitted 10 kbit/s pattern.
+- [x] Milestone 09 DC removal passed a 125,395-check bit-exact simulation and
+  was integrated with raw/estimate/centered UART capture selection.
+- [ ] Milestone 09 physical before/after and block/unblock captures recorded.
 - [ ] Rebuild-from-scratch mechanical realignment repeated three times during
   final qualification.
 
@@ -160,5 +164,5 @@ criteria in the project plan have been satisfied on physical hardware.
 
 The accepted analog selection and limitations are in
 [the Milestone 08 completion report](docs/milestones/completions/08-bpw34-analog-link.md).
-The next implementation step is
-[Milestone 09 fixed-point DC removal](docs/milestones/09-dc-removal.md).
+The next bench step is the
+[Milestone 09 hardware capture procedure](docs/evidence/milestone-09/README.md).
