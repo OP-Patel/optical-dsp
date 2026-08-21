@@ -30,7 +30,7 @@ CONDITIONS = (
     "misaligned",
 )
 AVAILABLE_RESISTORS_OHMS = (1000, 2000, 10000, 100000)
-CAPTURE_VIEWS = ("raw", "estimate", "centered")
+CAPTURE_VIEWS = ("raw", "estimate", "centered", "filtered")
 
 
 def expected_switches(condition: str, rate_bps: int) -> tuple[int, int, int, int]:
@@ -123,6 +123,7 @@ def capture_command(args: argparse.Namespace) -> None:
         "raw": "red RGB0 (zero BTN3 presses after reset)",
         "estimate": "green RGB0 (one BTN3 press after reset)",
         "centered": "blue RGB0 (two BTN3 presses after reset)",
+        "filtered": "cyan RGB0 (three BTN3 presses after reset)",
     }
     print(
         f"Capture view: {args.capture_view}; select "
@@ -142,10 +143,10 @@ def capture_command(args: argparse.Namespace) -> None:
             statistics = summarize_capture(indices, capture.samples)
             write_capture_csv(csv_path, capture.start_index, capture.samples)
 
-            decoded_centered_statistics = None
-            if args.capture_view == "centered":
+            decoded_signed_statistics = None
+            if args.capture_view in ("centered", "filtered"):
                 decoded_samples = tuple(sample - 2048 for sample in capture.samples)
-                decoded_centered_statistics = {
+                decoded_signed_statistics = {
                     "minimum": min(decoded_samples),
                     "maximum": max(decoded_samples),
                     "mean": sample_statistics.fmean(decoded_samples),
@@ -165,7 +166,7 @@ def capture_command(args: argparse.Namespace) -> None:
                 "capture_view": args.capture_view,
                 "sample_encoding": (
                     "signed_centered_plus_2048_saturated_to_u12"
-                    if args.capture_view == "centered"
+                    if args.capture_view in ("centered", "filtered")
                     else "unsigned_u12"
                 ),
                 "distance_cm": args.distance_cm,
@@ -175,7 +176,7 @@ def capture_command(args: argparse.Namespace) -> None:
                 "packet_crc_valid": True,
                 "nominal_sample_rate_hz": NOMINAL_SAMPLE_RATE_HZ,
                 "statistics": statistics.to_dict(),
-                "decoded_centered_statistics": decoded_centered_statistics,
+                "decoded_signed_statistics": decoded_signed_statistics,
                 "csv_path": str(csv_path),
                 "csv_sha256": sha256_file(csv_path),
             }
@@ -192,13 +193,13 @@ def capture_command(args: argparse.Namespace) -> None:
                 f"consecutive={statistics.indices_consecutive}\n"
                 f"metadata={metadata_path}"
             )
-            if decoded_centered_statistics is not None:
+            if decoded_signed_statistics is not None:
                 print(
-                    "Decoded centered values use raw_code - 2048: "
-                    f"min={decoded_centered_statistics['minimum']} "
-                    f"max={decoded_centered_statistics['maximum']} "
-                    f"mean={decoded_centered_statistics['mean']:.3f} "
-                    f"std={decoded_centered_statistics['standard_deviation']:.3f}"
+                    "Decoded signed values use raw_code - 2048: "
+                    f"min={decoded_signed_statistics['minimum']} "
+                    f"max={decoded_signed_statistics['maximum']} "
+                    f"mean={decoded_signed_statistics['mean']:.3f} "
+                    f"std={decoded_signed_statistics['standard_deviation']:.3f}"
                 )
             return
 

@@ -1,4 +1,4 @@
-# Milestone 09 dc_removal_bringup_top
+# Milestones 09/10 cumulative dc_removal_bringup_top
 # Arty A7-100 Rev. D/E, xc7a100tcsg324-1
 #
 # Transmitter controls:
@@ -8,8 +8,8 @@
 #
 # Capture controls:
 #   BTN1 arms an empty capture and BTN2 triggers it.
-#   BTN3 cycles RAW -> DC ESTIMATE -> CENTERED while capture is idle.
-#   RGB LED0: red=RAW, green=DC ESTIMATE, blue=CENTERED.
+#   BTN3 cycles RAW -> DC ESTIMATE -> CENTERED -> FILTERED while capture is idle.
+#   RGB LED0: red=RAW, green=DC ESTIMATE, blue=CENTERED, cyan=FILTERED.
 #   The view is latched when BTN1 is pressed, so a capture cannot change type
 #   halfway through a packet.
 

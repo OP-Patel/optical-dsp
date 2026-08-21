@@ -1,0 +1,11 @@
+Vivado Simulator 2026.1
+Date: 2026-08-20 America/Toronto
+
+Result:
+  PASS: tb_fir_filter checks=6692 tap_variants=8,16
+
+Both tap variants were checked against independent long-integer reference
+state. Coverage includes every coefficient bank, explicit impulse responses,
+constant gain, a hand-calculated vector, alternating extremes, deterministic
+random vectors, valid gaps, exact bypass, safe-boundary bank changes, and
+positive/negative saturation pulses.

@@ -37,14 +37,54 @@ and qualify a 16-tap configuration before final completion. Runtime arbitrary
 coefficient writes are not required. A host-selected compile-time bank is
 sufficient for V1.
 
+## Frozen implementation contract
+
+The permanent filter accepts the signed 13-bit centered output from Milestone
+09 and produces a signed 16-bit result. Coefficients are signed Q2.14 rather
+than Q1.15. Q2.14 represents `1.0` exactly as `16384`, which makes the identity
+bank and latency-matched bypass genuinely bit-for-bit.
+
+| Quantity | Representation | Bound used for V1 |
+|---|---|---:|
+| Input sample | signed 13-bit integer | -4095 to +4095 |
+| Coefficient | signed 16-bit Q2.14 | fixed bank values below |
+| Product | signed 29-bit Q14 | largest bank product magnitude 134,180,865 |
+| Accumulator | signed 34-bit Q14 | bank-3 worst case below 2,147,000,000 |
+| Rounded output | signed 16-bit integer | -32768 to +32767 |
+
+The accumulator is rounded to nearest after the sum. Exact half cases round
+away from zero. Values outside signed 16-bit range saturate and assert
+`saturation_pulse`; they never wrap.
+
+| Bank | Coefficients in Q2.14 | Purpose |
+|---:|---|---|
+| `00` | `16384, 0, ...` | Exact identity/impulse integration check |
+| `01` | Four coefficients of `4096`, then zero | Short four-sample average |
+| `10` | `16384/TAPS` at every tap | Normalized 8- or 16-sample receive average |
+| `11` | `32767` at every tap | Diagnostic high-gain bank that proves saturation behavior |
+
+The hardware image uses bank `10` with 16 taps. Milestone 08 measured about 24
+samples/symbol at 10 kbit/s, so a 16-sample window averages roughly two-thirds
+of a symbol. It should reduce sample noise while leaving a central portion of
+each symbol for Milestone 11 phase selection.
+
+The newest input is coefficient tap zero and participates immediately. Products
+and every balanced-adder-tree level are registered. Including the output
+register, latency is five clocks for 8 taps and six clocks for 16 taps, while
+throughput remains one sample per clock. The bypass path crosses matching delay
+registers and therefore has identical latency.
+History advances only on `in_valid`, including while bypass is selected.
+Coefficient-bank changes are accepted only on reset or `clear_history`, which
+also clears every delayed sample.
+
 ## Permanent modules to write
 
 ```text
 rtl/dsp/fir_filter.sv
 rtl/dsp/round_saturate.sv       # reusable if kept independently clear
 rtl/dsp/fir_coefficients.sv     # package or read-only bank
-sim/tb/tb_fir_filter.sv
-sim/tb/tb_round_saturate.sv
+rtl/tb/tb_fir_filter.sv
+rtl/tb/tb_round_saturate.sv
 ```
 
 Suggested interface:
@@ -132,6 +172,16 @@ The filter does not pass merely because the plot looks smoother. It must preserv
 framing-relevant transitions and later demonstrate equal or better BER under a
 controlled condition.
 
+The cumulative bring-up image adds a fourth BTN3 capture view. RGB LED0 cyan
+(green plus blue) means the 16-tap filtered output. Red, green, and blue retain
+the raw, estimate, and centered meanings from Milestone 09. All four sources
+are latency matched before the capture buffer, and centered/filtered packet
+codes decode as `raw_code - 2048`.
+
+Use the combined Milestone 09/10 procedure in
+`docs/evidence/milestone-10/README.md` so both milestones can be tested during
+one physical setup.
+
 ## Completion evidence
 
 - Fixed-point range table and coefficient-bank table.
@@ -141,11 +191,14 @@ controlled condition.
 
 ## Done when
 
-- [ ] Every coefficient appears in the correct impulse-response order.
-- [ ] Bit-exact results match an independent reference.
-- [ ] No internal wraparound is possible under documented bounds.
-- [ ] Bypass and filter latency are explicit and tested.
-- [ ] Both 8- and 16-tap configurations meet 100 MHz timing.
+- [x] Every coefficient appears in the correct impulse-response order.
+- [x] Bit-exact results match an independent reference.
+- [x] No internal wraparound is possible under documented bounds.
+- [x] Bypass and filter latency are explicit and tested.
+- [x] Both 8- and 16-tap configurations meet 100 MHz timing.
+
+The automated exit conditions are complete. Physical before/after capture
+evidence remains open and is intentionally combined with Milestone 09 testing.
 
 ## Scope guard
 

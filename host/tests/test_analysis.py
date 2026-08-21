@@ -100,6 +100,10 @@ class AnalysisTests(unittest.TestCase):
             capture_stem("PD 02", 100_000, "training", 10_000, 1, "centered"),
             "pd-02_r100000ohm_training_10000bps_centered_run01",
         )
+        self.assertEqual(
+            capture_stem("PD 02", 100_000, "training", 10_000, 1, "filtered"),
+            "pd-02_r100000ohm_training_10000bps_filtered_run01",
+        )
 
     def test_expected_switches_match_condition_and_rate(self) -> None:
         self.assertEqual(expected_switches("off", 0), (0, 0, 0, 0))

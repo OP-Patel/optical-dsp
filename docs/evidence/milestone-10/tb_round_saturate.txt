@@ -1,0 +1,9 @@
+Vivado Simulator 2026.1
+Date: 2026-08-20 America/Toronto
+
+Result:
+  PASS: tb_round_saturate checks=30
+
+The test covers zero, values on both sides of half-code boundaries, positive
+and negative half cases, both signed-16 endpoints, and values immediately past
+both saturation thresholds.

@@ -37,9 +37,9 @@ opt_design -directive RuntimeOptimized
 place_design
 route_design
 
-report_utilization -file [file join $report_dir milestone-09-utilization.rpt]
-report_timing_summary -file [file join $report_dir milestone-09-timing-summary.rpt]
-report_drc -file [file join $report_dir milestone-09-drc.rpt]
+report_utilization -file [file join $report_dir milestone-10-utilization.rpt]
+report_timing_summary -file [file join $report_dir milestone-10-timing-summary.rpt]
+report_drc -file [file join $report_dir milestone-10-drc.rpt]
 
-write_bitstream -force [file join $output_dir dc_removal_bringup_top.bit]
+write_bitstream -force [file join $output_dir fir_bringup_top.bit]
 quit

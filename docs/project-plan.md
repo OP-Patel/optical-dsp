@@ -1,8 +1,8 @@
 # FPGA optical DSP platform — project plan
 
 > **Document status:** Implementation-ready learning plan, revision 0.3
-> **Project status:** Milestone 09 automated implementation complete; physical
-> DC-removal captures remain open
+> **Project status:** Milestones 09 and 10 automated implementation complete;
+> combined DC-removal/FIR physical captures remain open
 > **Primary target:** Digilent Arty A7-100T (`xc7a100tcsg324-1`)
 > **V1 emphasis:** Hand-written, explainable components; measurable receive DSP;
 > reproducible evidence; and a terminal-first workflow
@@ -190,7 +190,7 @@ skip range analysis:
 | Raw ADC | Unsigned 12-bit |
 | Centered sample | Signed 13-bit |
 | DC estimate | At least 20 bits including fractional guard bits |
-| FIR coefficient | Signed 16-bit, Q1.15 |
+| FIR coefficient | Signed 16-bit, Q2.14; exact-unity coefficient is 16384 |
 | Product | Signed 29-bit |
 | 16-tap accumulator | Signed 34-bit minimum |
 | Filter output | Signed 16-bit after defined rounding and saturation |

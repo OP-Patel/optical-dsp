@@ -33,6 +33,7 @@ localparam int unsigned CAPTURE_ADDRESS_WIDTH = (CAPTURE_DEPTH <= 1) ? 1 : $clog
 localparam logic [1:0] CAPTURE_RAW = 2'b00;
 localparam logic [1:0] CAPTURE_ESTIMATE = 2'b01;
 localparam logic [1:0] CAPTURE_CENTERED = 2'b10;
+localparam logic [1:0] CAPTURE_FILTERED = 2'b11;
 
 logic rst;
 logic arm_sync;
@@ -83,9 +84,24 @@ logic estimate_fault;
 logic [11:0] raw_sample_delay;
 logic [11:0] estimate_sample_delay;
 logic [63:0] sample_index_delay;
+logic [11:0] raw_capture_delay;
+logic [11:0] estimate_capture_delay;
+logic signed [12:0] centered_capture_delay;
+logic [63:0] sample_index_capture_delay;
+logic [11:0] raw_capture_alignment [0:4];
+logic [11:0] estimate_capture_alignment [0:4];
+logic signed [12:0] centered_capture_alignment [0:4];
+logic [63:0] sample_index_capture_alignment [0:4];
+logic fir_out_valid;
+logic signed [15:0] filtered_sample;
+logic fir_saturation_pulse;
+logic [1:0] fir_active_coeff_bank;
 logic signed [13:0] centered_biased;
 logic [11:0] centered_capture_sample;
 logic centered_capture_saturated;
+logic signed [16:0] filtered_biased;
+logic [11:0] filtered_capture_sample;
+logic filtered_capture_saturated;
 logic capture_saturation_fault;
 logic [11:0] selected_capture_sample;
 
@@ -130,8 +146,12 @@ assign capture_fault_led =
     capture_saturation_fault;
 
 assign capture_raw_led = requested_capture_view == CAPTURE_RAW;
-assign capture_estimate_led = requested_capture_view == CAPTURE_ESTIMATE;
-assign capture_centered_led = requested_capture_view == CAPTURE_CENTERED;
+assign capture_estimate_led =
+    requested_capture_view == CAPTURE_ESTIMATE ||
+    requested_capture_view == CAPTURE_FILTERED;
+assign capture_centered_led =
+    requested_capture_view == CAPTURE_CENTERED ||
+    requested_capture_view == CAPTURE_FILTERED;
 
 reset_sync reset_sync_inst(
     .clk(clk_100mhz),
@@ -182,8 +202,12 @@ always_ff @(posedge clk_100mhz) begin
     if (rst || accepted_arm_pulse) begin
         capture_saturation_fault <= 1'b0;
     end else if (
-        capture_busy && dc_out_valid &&
-        armed_capture_view == CAPTURE_CENTERED && centered_capture_saturated
+        capture_busy && fir_out_valid &&
+        (
+            fir_saturation_pulse ||
+            (armed_capture_view == CAPTURE_CENTERED && centered_capture_saturated) ||
+            (armed_capture_view == CAPTURE_FILTERED && filtered_capture_saturated)
+        )
     ) begin
         capture_saturation_fault <= 1'b1;
     end
@@ -209,6 +233,7 @@ always_ff @(posedge clk_100mhz) begin
                 case (requested_capture_view)
                     CAPTURE_RAW: requested_capture_view <= CAPTURE_ESTIMATE;
                     CAPTURE_ESTIMATE: requested_capture_view <= CAPTURE_CENTERED;
+                    CAPTURE_CENTERED: requested_capture_view <= CAPTURE_FILTERED;
                     default: requested_capture_view <= CAPTURE_RAW;
                 endcase
             end
@@ -305,6 +330,22 @@ dc_removal #(
     .estimate_fault(estimate_fault)
 );
 
+fir_filter #(
+    .TAPS(16)
+) fir_filter_inst(
+    .clk(clk_100mhz),
+    .rst(rst),
+    .clear_history(1'b0),
+    .in_valid(dc_out_valid),
+    .in_sample(centered_sample),
+    .filter_enable(1'b1),
+    .coeff_bank(2'b10),
+    .out_valid(fir_out_valid),
+    .out_sample(filtered_sample),
+    .saturation_pulse(fir_saturation_pulse),
+    .active_coeff_bank(fir_active_coeff_bank)
+);
+
 always_ff @(posedge clk_100mhz) begin
     if (rst) begin
         raw_sample_delay <= 12'b0;
@@ -317,8 +358,45 @@ always_ff @(posedge clk_100mhz) begin
     end
 end
 
+always_ff @(posedge clk_100mhz) begin
+    if (rst) begin
+        raw_capture_delay <= 12'b0;
+        estimate_capture_delay <= 12'b0;
+        centered_capture_delay <= '0;
+        sample_index_capture_delay <= 64'b0;
+    end else if (dc_out_valid) begin
+        raw_capture_delay <= raw_sample_delay;
+        estimate_capture_delay <= estimate_sample_delay;
+        centered_capture_delay <= centered_sample;
+        sample_index_capture_delay <= sample_index_delay;
+    end
+end
+
+always_ff @(posedge clk_100mhz) begin
+    if (rst) begin
+        for (int stage = 0; stage < 5; stage++) begin
+            raw_capture_alignment[stage] <= 12'b0;
+            estimate_capture_alignment[stage] <= 12'b0;
+            centered_capture_alignment[stage] <= '0;
+            sample_index_capture_alignment[stage] <= 64'b0;
+        end
+    end else begin
+        raw_capture_alignment[0] <= raw_capture_delay;
+        estimate_capture_alignment[0] <= estimate_capture_delay;
+        centered_capture_alignment[0] <= centered_capture_delay;
+        sample_index_capture_alignment[0] <= sample_index_capture_delay;
+
+        for (int stage = 1; stage < 5; stage++) begin
+            raw_capture_alignment[stage] <= raw_capture_alignment[stage - 1];
+            estimate_capture_alignment[stage] <= estimate_capture_alignment[stage - 1];
+            centered_capture_alignment[stage] <= centered_capture_alignment[stage - 1];
+            sample_index_capture_alignment[stage] <= sample_index_capture_alignment[stage - 1];
+        end
+    end
+end
+
 always_comb begin
-    centered_biased = $signed(centered_sample) + 14'sd2048;
+    centered_biased = $signed(centered_capture_alignment[4]) + 14'sd2048;
     centered_capture_saturated = 1'b0;
 
     if (centered_biased < 0) begin
@@ -331,10 +409,24 @@ always_comb begin
         centered_capture_sample = centered_biased[11:0];
     end
 
+    filtered_biased = $signed(filtered_sample) + 17'sd2048;
+    filtered_capture_saturated = 1'b0;
+
+    if (filtered_biased < 0) begin
+        filtered_capture_sample = 12'b0;
+        filtered_capture_saturated = 1'b1;
+    end else if (filtered_biased > 4095) begin
+        filtered_capture_sample = 12'hfff;
+        filtered_capture_saturated = 1'b1;
+    end else begin
+        filtered_capture_sample = filtered_biased[11:0];
+    end
+
     case (armed_capture_view)
-        CAPTURE_ESTIMATE: selected_capture_sample = estimate_sample_delay;
+        CAPTURE_ESTIMATE: selected_capture_sample = estimate_capture_alignment[4];
         CAPTURE_CENTERED: selected_capture_sample = centered_capture_sample;
-        default: selected_capture_sample = raw_sample_delay;
+        CAPTURE_FILTERED: selected_capture_sample = filtered_capture_sample;
+        default: selected_capture_sample = raw_capture_alignment[4];
     endcase
 end
 
@@ -346,9 +438,9 @@ sample_capture #(
     .rst(rst),
     .arm(accepted_arm_pulse),
     .trigger(trigger_pulse),
-    .sample_valid(dc_out_valid),
+    .sample_valid(fir_out_valid),
     .sample_u12(selected_capture_sample),
-    .sample_index(sample_index_delay),
+    .sample_index(sample_index_capture_alignment[4]),
     .read_address(capture_read_address),
     .read_data(capture_read_data),
     .capture_armed(capture_armed),
